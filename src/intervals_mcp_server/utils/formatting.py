@@ -203,10 +203,8 @@ Last Updated: {entry.get("updated", "Unknown")}"""
 def format_event_summary(event: dict[str, Any]) -> str:
     """Format a basic event summary into a readable string."""
 
-    event_date = event.get("date", "Unknown")
-    event_type = (
-        "Workout" if event.get("workout") else "Race" if event.get("race") else "Other"
-    )
+    event_date = event.get("date", event.get("start_date_local", "Unknown"))
+    event_type = event.get("category", "Other").replace("_", " ").title()
     event_name = event.get("name", "Unnamed")
     event_id = event.get("id", "N/A")
     event_desc = event.get("description", "No description")
