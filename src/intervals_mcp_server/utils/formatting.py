@@ -210,7 +210,9 @@ Status: {"Locked" if entry.get("locked") else "Unlocked"}
 Last Updated: {entry.get("updated", "Unknown")}"""
 
 
-def format_event_summary(event: dict[str, Any]) -> str:
+def format_event_summary(
+    event: dict[str, Any], shared_event: dict[str, Any] | None = None
+) -> str:
     """Format a basic event summary into a readable string."""
 
     # Update to check for "date" if "start_date_local" is not provided
@@ -220,11 +222,32 @@ def format_event_summary(event: dict[str, Any]) -> str:
     event_id = event.get("id", "N/A")
     event_desc = event.get("description", "No description")
 
+    shared_event_summary = _format_shared_event_summary(shared_event)
+
     return f"""Date: {event_date}
 ID: {event_id}
 Type: {event_type}
 Name: {event_name}
-Description: {event_desc}"""
+Description: {event_desc}
+{shared_event_summary}""".rstrip()
+
+
+def _format_shared_event_summary(shared_event: dict[str, Any] | None) -> str:
+    if not shared_event:
+        return ""
+    shared_event_description = shared_event.get("description", "Unknown").strip()
+    shared_event_types = shared_event.get("types", ["Unknown"])
+    shared_event_website = shared_event.get("website", "Unknown").strip()
+    shared_event_location = shared_event.get("location", "Unknown").strip()
+    shared_event_address = shared_event.get("address", "Unknown").strip()
+    shared_event_country = shared_event.get("country", "Unknown").strip()
+
+    return f"""Shared Event Description: {shared_event_description}
+Sport Types: {', '.join(shared_event_types)}
+Event Website: {shared_event_website}
+Location: {shared_event_location}
+Address: {shared_event_address}
+Country: {shared_event_country}"""
 
 
 def format_event_details(event: dict[str, Any]) -> str:
