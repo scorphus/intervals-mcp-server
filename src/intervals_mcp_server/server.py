@@ -38,6 +38,7 @@ Usage:
 
 from json import JSONDecodeError
 import base64
+import json
 import logging
 import os
 import re
@@ -106,6 +107,10 @@ INTERVALS_API_BASE_URL = os.getenv("INTERVALS_API_BASE_URL", "https://intervals.
 API_KEY = os.getenv("API_KEY", "")  # Provide default empty string
 ATHLETE_ID = os.getenv("ATHLETE_ID", "")  # Default athlete ID from .env
 USER_AGENT = "intervalsicu-mcp-server/1.0"
+
+# Validate environment variables on import
+if API_KEY == "":
+    raise ValueError("API_KEY environment variable is not set or empty")
 
 # Accept athlete IDs that are either all digits or start with 'i' followed by digits
 if not re.fullmatch(r"i?\d+", ATHLETE_ID):
@@ -708,7 +713,7 @@ async def add_or_update_event( # pylint: disable=locally-disabled, too-many-argu
         workout_type: Workout type (e.g. Ride, Run, Swim, Walk, Row)
         moving_time: Total expected moving time of the workout in seconds (optional)
         distance: Total expected distance of the workout in meters (optional)
-    
+
     Example:
         "workout_doc": {
             "description": "High-intensity workout for increasing VO2 max",
@@ -722,7 +727,7 @@ async def add_or_update_event( # pylint: disable=locally-disabled, too-many-argu
                 {"text": ""}, # Add comments or blank lines for readability
             ]
         }
-    
+
     Step properties:
         distance: Distance of step in meters
             {"distance": "5000"}
@@ -992,6 +997,62 @@ async def download_workout_zwo(
         return f"Error downloading workout: {error_message}"
 
     return result
+
+
+@mcp.tool()
+async def get_races(athlete_id: str | None = None, api_key: str | None = None) -> str:
+    """Get events of type race for an athlete from Intervals.icu
+
+    Args:
+        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
+        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+    """
+    # Use provided athlete_id or fall back to global ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    if not athlete_id_to_use:
+        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
+
+    # Set date parameters
+    start_date = datetime.now().strftime("%Y-%m-%d")
+    end_date = (datetime.now() + timedelta(days=356)).strftime("%Y-%m-%d")
+
+    # Call the Intervals.icu API
+    params = {"oldest": start_date, "newest": end_date}
+
+    result = await make_intervals_request(
+        url=f"/athlete/{athlete_id_to_use}/events", api_key=api_key, params=params
+    )
+
+    if isinstance(result, dict) and "error" in result:
+        error_message = result.get("message", "Unknown error")
+        return f"Error fetching events: {error_message}"
+
+    # Format the response
+    if not result:
+        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
+
+    # Ensure result is a list
+    events = result if isinstance(result, list) else []
+
+    if not events:
+        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
+
+    races_summary = "Races:\n\n"
+    for event in events:
+        if not isinstance(event, dict) or not event.get("category", "").startswith(
+            "RACE_"
+        ):
+            continue
+
+        shared_event = None
+        if shared_event_id := event.get("shared_event_id"):
+            shared_event = await make_intervals_request(
+                url=f"/shared-event/{shared_event_id}", api_key=api_key
+            )
+            assert isinstance(shared_event, dict)
+        races_summary += format_event_summary(event, shared_event) + "\n\n\n"
+
+    return races_summary
 
 
 # Run the server
