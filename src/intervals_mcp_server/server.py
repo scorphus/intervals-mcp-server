@@ -17,6 +17,7 @@ The server follows MCP specifications and uses the Python MCP SDK.
 The server is designed to be run as a standalone script.
 """
 
+import json
 import logging
 import os
 from datetime import datetime, timedelta
@@ -25,15 +26,10 @@ from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
-
 # Import formatting utilities
-from utils.formatting import (
-    format_activity_summary,
-    format_event_details,
-    format_event_summary,
-    format_intervals,
-    format_wellness_entry,
-)
+from utils.formatting import (format_activity_summary, format_event_details,
+                              format_event_summary, format_intervals,
+                              format_wellness_entry)
 
 # Try to load environment variables from .env file if it exists
 try:
@@ -481,6 +477,62 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
 
     # Format the intervals data
     return format_intervals(result)
+
+
+@mcp.tool()
+async def get_races(athlete_id: str | None = None, api_key: str | None = None) -> str:
+    """Get events of type race for an athlete from Intervals.icu
+
+    Args:
+        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
+        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+    """
+    # Use provided athlete_id or fall back to global ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    if not athlete_id_to_use:
+        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
+
+    # Set date parameters
+    start_date = datetime.now().strftime("%Y-%m-%d")
+    end_date = (datetime.now() + timedelta(days=356)).strftime("%Y-%m-%d")
+
+    # Call the Intervals.icu API
+    params = {"oldest": start_date, "newest": end_date}
+
+    result = await make_intervals_request(
+        url=f"/athlete/{athlete_id_to_use}/events", api_key=api_key, params=params
+    )
+
+    if isinstance(result, dict) and "error" in result:
+        error_message = result.get("message", "Unknown error")
+        return f"Error fetching events: {error_message}"
+
+    # Format the response
+    if not result:
+        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
+
+    # Ensure result is a list
+    events = result if isinstance(result, list) else []
+
+    if not events:
+        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
+
+    races_summary = "Races:\n\n"
+    for event in events:
+        if not isinstance(event, dict) or not event.get("category", "").startswith(
+            "RACE_"
+        ):
+            continue
+
+        shared_event = None
+        if shared_event_id := event.get("shared_event_id"):
+            shared_event = await make_intervals_request(
+                url=f"/shared-event/{shared_event_id}", api_key=api_key
+            )
+            assert isinstance(shared_event, dict)
+        races_summary += format_event_summary(event, shared_event) + "\n\n\n"
+
+    return races_summary
 
 
 # Run the server

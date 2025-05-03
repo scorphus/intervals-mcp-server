@@ -46,6 +46,31 @@ async def test_server_get_activities():
 
 
 @pytest.mark.asyncio
+async def test_server_get_races():
+    """
+    async def get_races(athlete_id: str | None = None, api_key: str | None = None) -> str:
+        \"""Get events of type race for an athlete from Intervals.icu
+
+        Args:
+            athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
+            api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+        \"""
+        ...
+    """
+    env = load_dotenv()
+    assert env is not None
+    assert server.API_KEY is not None
+    assert server.ATHLETE_ID is not None
+    response = await server.get_races(
+        athlete_id=server.ATHLETE_ID, api_key=server.API_KEY
+    )
+    print(response)
+    # Save the response to activities.md
+    with open("races.md", "w") as f:
+        f.write(response)
+
+
+@pytest.mark.asyncio
 async def test_server_get_events():
     """
     async def get_events(
