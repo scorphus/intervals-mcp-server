@@ -607,7 +607,7 @@ async def get_power_curves(
             - s1 (previous season) etc.
             - all (all time)
             - r.2023-10-01.2023-10-31 (date range)
-        type_: The sport (Ride, Run, Swim etc.)
+        type_: The sport (Ride, Run, Swim, etc.)
 
     Returns:
         List of dictionaries containing power curves for the specified athlete and sport
