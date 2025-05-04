@@ -1,3 +1,4 @@
+import json
 import sys
 
 # add src/intervals_mcp_server to the Python path:
@@ -103,3 +104,41 @@ async def test_server_get_events():
     # Save the response to activities.md
     with open("events.md", "w") as f:
         f.write(response)
+
+
+@pytest.mark.asyncio
+async def test_server_get_power_curves():
+    """
+    async def get_power_curves(
+        athlete_id: str | None = None, api_key: str | None = None, curves: str = "42d"
+    ) -> dict[str, float] | str:
+        \"""Get power curves for an athlete from Intervals.icu
+
+        Args:
+            athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
+            api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+            curves: Comma separated list of curves to return. Default is "1y". Possible values are:
+                - 1y (past year)
+                - 2y (past 2 years) etc.
+                - 42d (past 42 days) etc.
+                - s0 (current season)
+                - s1 (previous season) etc.
+                - all (all time)
+                - r.2023-10-01.2023-10-31 (date range)
+
+        Returns:
+            List of dictionaries containing power curve data for each sport, with durations as keys and power values as values
+        \"""
+        ...
+    """
+    env = load_dotenv()
+    assert env is not None
+    assert server.API_KEY is not None
+    assert server.ATHLETE_ID is not None
+    response = await server.get_power_curves(
+        athlete_id=server.ATHLETE_ID, api_key=server.API_KEY
+    )
+    print(response)
+    # Save the response to power_curves.json
+    with open("power_curves.json", "w") as f:
+        json.dump(response, f)
