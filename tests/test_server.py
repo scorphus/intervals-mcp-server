@@ -15,17 +15,6 @@ def test_server_exists():
 
 @pytest.mark.asyncio
 async def test_server_get_activities():
-    """
-    async def get_activities(
-        athlete_id: str | None = None,
-        api_key: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
-        limit: int = 10,
-        include_unnamed: bool = False,
-    ) -> str:
-        ...
-    """
     env = load_dotenv()
     assert env is not None
     assert server.API_KEY is not None
@@ -48,16 +37,6 @@ async def test_server_get_activities():
 
 @pytest.mark.asyncio
 async def test_server_get_races():
-    """
-    async def get_races(athlete_id: str | None = None, api_key: str | None = None) -> str:
-        \"""Get events of type race for an athlete from Intervals.icu
-
-        Args:
-            athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
-            api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
-        \"""
-        ...
-    """
     env = load_dotenv()
     assert env is not None
     assert server.API_KEY is not None
@@ -73,23 +52,6 @@ async def test_server_get_races():
 
 @pytest.mark.asyncio
 async def test_server_get_events():
-    """
-    async def get_events(
-        athlete_id: str | None = None,
-        api_key: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
-    ) -> str:
-        \"""Get events for an athlete from Intervals.icu
-
-        Args:
-            athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
-            api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
-            start_date: Start date in YYYY-MM-DD format (optional, defaults to today)
-            end_date: End date in YYYY-MM-DD format (optional, defaults to 30 days from today)
-        \"""
-        ...
-    """
     env = load_dotenv()
     assert env is not None
     assert server.API_KEY is not None
@@ -108,29 +70,6 @@ async def test_server_get_events():
 
 @pytest.mark.asyncio
 async def test_server_get_power_curves():
-    """
-    async def get_power_curves(
-        athlete_id: str | None = None, api_key: str | None = None, curves: str = "42d"
-    ) -> dict[str, float] | str:
-        \"""Get power curves for an athlete from Intervals.icu
-
-        Args:
-            athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
-            api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
-            curves: Comma separated list of curves to return. Default is "1y". Possible values are:
-                - 1y (past year)
-                - 2y (past 2 years) etc.
-                - 42d (past 42 days) etc.
-                - s0 (current season)
-                - s1 (previous season) etc.
-                - all (all time)
-                - r.2023-10-01.2023-10-31 (date range)
-
-        Returns:
-            List of dictionaries containing power curve data for each sport, with durations as keys and power values as values
-        \"""
-        ...
-    """
     env = load_dotenv()
     assert env is not None
     assert server.API_KEY is not None
