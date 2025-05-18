@@ -43,10 +43,15 @@ from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+
 # Import formatting utilities
-from utils.formatting import (format_activity_summary, format_event_details,
-                              format_event_summary, format_intervals,
-                              format_wellness_entry)
+from utils.formatting import (
+    format_activity_summary,
+    format_event_details,
+    format_event_summary,
+    format_intervals,
+    format_wellness_entry,
+)
 
 # Try to load environment variables from .env file if it exists
 try:
