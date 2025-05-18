@@ -143,3 +143,18 @@ async def test_server_get_activity_pace_curve():
     # Save the response to activity_pace_curve.json
     with open("activity_pace_curve.json", "w") as f:
         json.dump(response, f)
+
+
+@pytest.mark.asyncio
+async def test_server_list_events():
+    env = load_dotenv()
+    assert env is not None
+    assert server.API_KEY is not None
+    assert server.ATHLETE_ID is not None
+    response = await server.list_events(
+        athlete_id=server.ATHLETE_ID, api_key=server.API_KEY
+    )
+    print(response)
+    # Save the response to list_events.json
+    with open("list_events.json", "w") as f:
+        json.dump(response, f)
