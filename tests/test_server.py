@@ -49,7 +49,7 @@ def test_get_activity_details(monkeypatch):
         return sample
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
-    result = asyncio.run(get_activity_details("123"))
+    result = asyncio.run(get_activity_details(123))
     assert "Activity: Morning Ride" in result
 
 
