@@ -1,0 +1,116 @@
+from intervals_mcp_server.utils.formatting import (
+    format_activity_summary,
+    format_workout,
+    format_wellness_entry,
+    format_event_summary,
+    format_event_details,
+    format_intervals,
+)
+
+
+def test_format_activity_summary():
+    data = {
+        "name": "Morning Ride",
+        "id": 1,
+        "type": "Ride",
+        "startTime": "2024-01-01T08:00:00Z",
+        "distance": 1000,
+        "duration": 3600,
+    }
+    result = format_activity_summary(data)
+    assert "Activity: Morning Ride" in result
+    assert "ID: 1" in result
+
+
+def test_format_workout():
+    workout = {
+        "name": "Workout1",
+        "description": "desc",
+        "sport": "Ride",
+        "duration": 3600,
+        "tss": 50,
+        "intervals": [1, 2, 3],
+    }
+    result = format_workout(workout)
+    assert "Workout: Workout1" in result
+    assert "Intervals: 3" in result
+
+
+def test_format_wellness_entry():
+    entry = {
+        "date": "2024-01-01",
+        "ctl": 70,
+        "sleepSecs": 28800,
+        "weight": 70,
+    }
+    result = format_wellness_entry(entry)
+    assert "Date: 2024-01-01" in result
+    assert "Fitness (CTL): 70" in result
+
+
+def test_format_event_summary():
+    event = {
+        "date": "2024-01-01",
+        "id": "e1",
+        "name": "Event1",
+        "description": "desc",
+        "race": True,
+    }
+    summary = format_event_summary(event)
+    assert "Date: 2024-01-01" in summary
+    assert "Type: Race" in summary
+
+
+def test_format_event_details():
+    event = {
+        "id": "e1",
+        "date": "2024-01-01",
+        "name": "Event1",
+        "description": "desc",
+        "workout": {
+            "id": "w1",
+            "sport": "Ride",
+            "duration": 3600,
+            "tss": 50,
+            "intervals": [1, 2],
+        },
+        "race": True,
+        "priority": "A",
+        "result": "1st",
+        "calendar": {"name": "Main"},
+    }
+    details = format_event_details(event)
+    assert "Event Details:" in details
+    assert "Workout Information:" in details
+
+
+def test_format_intervals():
+    intervals_data = {
+        "id": "i1",
+        "analyzed": True,
+        "icu_intervals": [
+            {
+                "type": "work",
+                "label": "Rep 1",
+                "elapsed_time": 60,
+                "moving_time": 60,
+                "distance": 100,
+                "average_watts": 200,
+                "max_watts": 300,
+                "average_watts_kg": 3.0,
+                "max_watts_kg": 5.0,
+                "weighted_average_watts": 220,
+                "intensity": 0.8,
+                "training_load": 10,
+                "average_heartrate": 150,
+                "max_heartrate": 160,
+                "average_cadence": 90,
+                "max_cadence": 100,
+                "average_speed": 6,
+                "max_speed": 8,
+            }
+        ],
+    }
+    result = format_intervals(intervals_data)
+    assert "Intervals Analysis:" in result
+    assert "Rep 1" in result
