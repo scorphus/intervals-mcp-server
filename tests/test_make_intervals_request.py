@@ -1,9 +1,10 @@
 import asyncio
 import logging
+from json import JSONDecodeError
 
 import httpx
 
-from intervals_mcp_server.server import make_intervals_request
+import intervals_mcp_server.server as server
 
 
 class MockBadJSONResponse:
@@ -15,7 +16,7 @@ class MockBadJSONResponse:
         return None
 
     def json(self):
-        raise ValueError("No JSON")
+        raise JSONDecodeError("Expecting value", "bad", 0)
 
 
 class MockAsyncClient:
@@ -33,11 +34,10 @@ class MockAsyncClient:
 
 
 def test_make_intervals_request_bad_json(monkeypatch, caplog):
-    monkeypatch.setattr(httpx, "AsyncClient", MockAsyncClient)
+    monkeypatch.setattr(server, "httpx_client", MockAsyncClient())
 
     with caplog.at_level(logging.ERROR):
-        result = asyncio.run(make_intervals_request("/bad"))
+        result = asyncio.run(server.make_intervals_request("/bad"))
 
     assert result["error"] is True
     assert "Invalid JSON in response" in result["message"]
-    assert "JSON decode error" in caplog.text

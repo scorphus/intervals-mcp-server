@@ -29,7 +29,7 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 
 # Import formatting utilities
-from utils.formatting import (
+from intervals_mcp_server.utils.formatting import (
     format_activity_summary,
     format_event_details,
     format_event_summary,
@@ -95,9 +95,13 @@ async def make_intervals_request(
         response = await httpx_client.get(
             full_url, headers=headers, params=params, auth=auth, timeout=30.0
         )
-        # Assign to _ to indicate intentional ignoring of return value
+        try:
+            data = response.json() if response.content else {}
+        except JSONDecodeError:
+            logger.error("Invalid JSON in response from: %s", full_url)
+            return {"error": True, "message": "Invalid JSON in response"}
         _ = response.raise_for_status()
-        return response.json() if response.content else {}
+        return data
     except httpx.HTTPStatusError as e:
         error_code = e.response.status_code
         error_text = e.response.text
