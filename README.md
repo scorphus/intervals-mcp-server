@@ -100,8 +100,8 @@ mcp install src/intervals_mcp_server/server.py --name "Intervals.icu" --with-edi
       ],
       "env": {
         "INTERVALS_API_BASE_URL": "https://intervals.icu/api/v1",
-        "ATHLETE_ID": <YOUR_ATHLETE_ID>,
-        "API_KEY": <YOUR_API_KEY>,
+        "ATHLETE_ID": "<YOUR_ATHLETE_ID>",
+        "API_KEY": "<YOUR_API_KEY>",
         "LOG_LEVEL": "INFO"
       }
     }
