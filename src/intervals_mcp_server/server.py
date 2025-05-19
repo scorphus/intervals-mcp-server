@@ -91,8 +91,8 @@ async def make_intervals_request(
 
             try:
                 return response.json()
-            except JSONDecodeError as e:
-                logger.error("JSON decode error: %s", str(e))
+            except (JSONDecodeError, ValueError) as e:
+                logger.error("JSON parsing error: %s", str(e))
                 return {
                     "error": True,
                     "message": f"Invalid JSON in response: {str(e)}",
