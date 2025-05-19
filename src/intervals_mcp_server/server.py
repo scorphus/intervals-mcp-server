@@ -17,6 +17,7 @@ The server follows MCP specifications and uses the Python MCP SDK.
 The server is designed to be run as a standalone script.
 """
 
+from json import JSONDecodeError
 import logging
 import os
 from contextlib import asynccontextmanager
