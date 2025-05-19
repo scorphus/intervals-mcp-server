@@ -17,6 +17,7 @@ The server follows MCP specifications and uses the Python MCP SDK.
 The server is designed to be run as a standalone script.
 """
 
+from json import JSONDecodeError
 import logging
 import os
 from datetime import datetime, timedelta
@@ -84,7 +85,18 @@ async def make_intervals_request(
 
             # Assign to _ to indicate intentional ignoring of return value
             _ = response.raise_for_status()
-            return response.json() if response.content else {}
+
+            if not response.content:
+                return {}
+
+            try:
+                return response.json()
+            except (JSONDecodeError, ValueError) as e:
+                logger.error("JSON parsing error: %s", str(e))
+                return {
+                    "error": True,
+                    "message": f"Invalid JSON in response: {str(e)}",
+                }
 
         except httpx.HTTPStatusError as e:
             error_code = e.response.status_code
