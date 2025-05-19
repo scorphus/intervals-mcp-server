@@ -78,7 +78,7 @@ To use this server with Claude Desktop, you need to add it to your Claude Deskto
 1. Run the following from the `intervals_mcp_server` directory to configure Claude Desktop:
 
 ```bash
-mcp install src/intervals_mcp_server/server.py --name "Intervals.icu MCP Server"
+mcp install src/intervals_mcp_server/server.py --name "Intervals.icu" --with-editable . --env-file .env
 ```
 
 2. If you open your Claude Desktop App configuration file `claude_desktop_config.json`, it should look like this:
@@ -87,15 +87,23 @@ mcp install src/intervals_mcp_server/server.py --name "Intervals.icu MCP Server"
 {
   "mcpServers": {
     "Intervals.icu": {
-      "command": "uv",
+      "command": "/Users/<USERNAME>/.cargo/bin/uv",
       "args": [
         "run",
         "--with",
         "mcp[cli]",
+        "--with-editable",
+        "/path/to/intervals-mcp-server",
         "mcp",
         "run",
         "/path/to/intervals-mcp-server/src/intervals_mcp_server/server.py"
-      ]
+      ],
+      "env": {
+        "INTERVALS_API_BASE_URL": "https://intervals.icu/api/v1",
+        "ATHLETE_ID": <YOUR_ATHLETE_ID>,
+        "API_KEY": <YOUR_API_KEY>,
+        "LOG_LEVEL": "INFO"
+      }
     }
   }
 }
