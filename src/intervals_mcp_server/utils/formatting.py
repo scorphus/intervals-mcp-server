@@ -288,8 +288,6 @@ Analyzed: {intervals_data.get("analyzed", "N/A")}
             label = interval.get("label", f"Interval {i}")
 
             # Format duration, distance, and time information
-            start_time = interval.get("start_time", 0)
-            end_time = interval.get("end_time", 0)
             moving_time = interval.get("moving_time", 0)
             elapsed_time = interval.get("elapsed_time", 0)
             distance = interval.get("distance", 0)

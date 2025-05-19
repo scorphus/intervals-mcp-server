@@ -20,6 +20,7 @@ The server is designed to be run as a standalone script.
 from json import JSONDecodeError
 import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from http import HTTPStatus
 from typing import Any
@@ -53,8 +54,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger("intervals_icu_mcp_server")
 
-# Initialize FastMCP server
-mcp = FastMCP("intervals-icu")
+# Create a single AsyncClient instance for all requests
+httpx_client = httpx.AsyncClient()
+
+
+@asynccontextmanager
+async def lifespan(app: FastMCP):
+    """Ensure the shared httpx client is closed when the server stops."""
+    try:
+        yield
+    finally:
+        await httpx_client.aclose()
+
+
+# Initialize FastMCP server with custom lifespan
+mcp = FastMCP("intervals-icu", lifespan=lifespan)
 
 # Constants
 INTERVALS_API_BASE_URL = os.getenv(
@@ -77,59 +91,45 @@ async def make_intervals_request(
     auth = httpx.BasicAuth("API_KEY", key_to_use)
     full_url = f"{INTERVALS_API_BASE_URL}{url}"
 
-    async with httpx.AsyncClient() as client:
+    try:
+        response = await httpx_client.get(
+            full_url, headers=headers, params=params, auth=auth, timeout=30.0
+        )
+        # Assign to _ to indicate intentional ignoring of return value
+        _ = response.raise_for_status()
+        return response.json() if response.content else {}
+    except httpx.HTTPStatusError as e:
+        error_code = e.response.status_code
+        error_text = e.response.text
+
+        logger.error("HTTP error: %s - %s", error_code, error_text)
+
+        # Provide specific messages for common error codes
+        error_messages = {
+            HTTPStatus.UNAUTHORIZED: f"{HTTPStatus.UNAUTHORIZED.value} {HTTPStatus.UNAUTHORIZED.phrase}: Please check your API key.",
+            HTTPStatus.FORBIDDEN: f"{HTTPStatus.FORBIDDEN.value} {HTTPStatus.FORBIDDEN.phrase}: You may not have permission to access this resource.",
+            HTTPStatus.NOT_FOUND: f"{HTTPStatus.NOT_FOUND.value} {HTTPStatus.NOT_FOUND.phrase}: The requested endpoint or ID doesn't exist.",
+            HTTPStatus.UNPROCESSABLE_ENTITY: f"{HTTPStatus.UNPROCESSABLE_ENTITY.value} {HTTPStatus.UNPROCESSABLE_ENTITY.phrase}: The server couldn't process the request (invalid parameters or unsupported operation).",
+            HTTPStatus.TOO_MANY_REQUESTS: f"{HTTPStatus.TOO_MANY_REQUESTS.value} {HTTPStatus.TOO_MANY_REQUESTS.phrase}: Too many requests in a short time period.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: f"{HTTPStatus.INTERNAL_SERVER_ERROR.value} {HTTPStatus.INTERNAL_SERVER_ERROR.phrase}: The Intervals.icu server encountered an internal error.",
+            HTTPStatus.SERVICE_UNAVAILABLE: f"{HTTPStatus.SERVICE_UNAVAILABLE.value} {HTTPStatus.SERVICE_UNAVAILABLE.phrase}: The Intervals.icu server might be down or undergoing maintenance.",
+        }
+
+        # Get a specific message or default to the server's response
         try:
-            response = await client.get(
-                full_url, headers=headers, params=params, auth=auth, timeout=30.0
-            )
+            status = HTTPStatus(error_code)
+            custom_message = error_messages.get(status, error_text)
+        except ValueError:
+            # If the status code doesn't map to HTTPStatus, use the error_text
+            custom_message = error_text
 
-            # Assign to _ to indicate intentional ignoring of return value
-            _ = response.raise_for_status()
-
-            if not response.content:
-                return {}
-
-            try:
-                return response.json()
-            except (JSONDecodeError, ValueError) as e:
-                logger.error("JSON parsing error: %s", str(e))
-                return {
-                    "error": True,
-                    "message": f"Invalid JSON in response: {str(e)}",
-                }
-
-        except httpx.HTTPStatusError as e:
-            error_code = e.response.status_code
-            error_text = e.response.text
-
-            logger.error("HTTP error: %s - %s", error_code, error_text)
-
-            # Provide specific messages for common error codes
-            error_messages = {
-                HTTPStatus.UNAUTHORIZED: f"{HTTPStatus.UNAUTHORIZED.value} {HTTPStatus.UNAUTHORIZED.phrase}: Please check your API key.",
-                HTTPStatus.FORBIDDEN: f"{HTTPStatus.FORBIDDEN.value} {HTTPStatus.FORBIDDEN.phrase}: You may not have permission to access this resource.",
-                HTTPStatus.NOT_FOUND: f"{HTTPStatus.NOT_FOUND.value} {HTTPStatus.NOT_FOUND.phrase}: The requested endpoint or ID doesn't exist.",
-                HTTPStatus.UNPROCESSABLE_ENTITY: f"{HTTPStatus.UNPROCESSABLE_ENTITY.value} {HTTPStatus.UNPROCESSABLE_ENTITY.phrase}: The server couldn't process the request (invalid parameters or unsupported operation).",
-                HTTPStatus.TOO_MANY_REQUESTS: f"{HTTPStatus.TOO_MANY_REQUESTS.value} {HTTPStatus.TOO_MANY_REQUESTS.phrase}: Too many requests in a short time period.",
-                HTTPStatus.INTERNAL_SERVER_ERROR: f"{HTTPStatus.INTERNAL_SERVER_ERROR.value} {HTTPStatus.INTERNAL_SERVER_ERROR.phrase}: The Intervals.icu server encountered an internal error.",
-                HTTPStatus.SERVICE_UNAVAILABLE: f"{HTTPStatus.SERVICE_UNAVAILABLE.value} {HTTPStatus.SERVICE_UNAVAILABLE.phrase}: The Intervals.icu server might be down or undergoing maintenance.",
-            }
-
-            # Get a specific message or default to the server's response
-            try:
-                status = HTTPStatus(error_code)
-                custom_message = error_messages.get(status, error_text)
-            except ValueError:
-                # If the status code doesn't map to HTTPStatus, use the error_text
-                custom_message = error_text
-
-            return {"error": True, "status_code": error_code, "message": custom_message}
-        except httpx.RequestError as e:
-            logger.error("Request error: %s", str(e))
-            return {"error": True, "message": f"Request error: {str(e)}"}
-        except Exception as e:
-            logger.error("Unexpected error: %s", str(e))
-            return {"error": True, "message": f"Unexpected error: {str(e)}"}
+        return {"error": True, "status_code": error_code, "message": custom_message}
+    except httpx.RequestError as e:
+        logger.error("Request error: %s", str(e))
+        return {"error": True, "message": f"Request error: {str(e)}"}
+    except Exception as e:
+        logger.error("Unexpected error: %s", str(e))
+        return {"error": True, "message": f"Unexpected error: {str(e)}"}
 
 
 # ----- MCP Tool Implementations ----- #
