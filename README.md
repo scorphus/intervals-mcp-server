@@ -27,8 +27,8 @@ cd intervals-mcp-server
 ### 3. Create and activate a virtual environment
 
 ```bash
-# Create virtual environment
-uv venv
+# Create virtual environment with Python 3.12
+uv venv --python 3.12
 
 # Activate virtual environment
 # On macOS/Linux:
@@ -37,10 +37,10 @@ source .venv/bin/activate
 .venv\Scripts\activate
 ```
 
-### 4. Install dependencies
+### 4. Sync project dependencies
 
 ```bash
-uv pip install -e .
+uv sync
 ```
 
 ### 5. Set up environment variables
@@ -133,6 +133,23 @@ Once the server is running and Claude Desktop is configured, you can use the fol
 - `get_wellness_data`: Fetch wellness data
 - `get_events`: Retrieve upcoming events (workouts, races, etc.)
 - `get_event_by_id`: Get detailed information for a specific event
+
+## Development and testing
+
+Install development dependencies and run the test suite with:
+
+```bash
+uv sync --all-extras
+pytest -v tests
+```
+
+### Running the server locally
+
+To start the server manually (useful when developing or testing), run:
+
+```bash
+mcp run src/intervals_mcp_server/server.py
+```
 
 ## License
 
