@@ -1,8 +1,10 @@
 import asyncio
 import logging
 from json import JSONDecodeError
+import os
 
-import httpx
+os.environ.setdefault("API_KEY", "test-key")
+os.environ.setdefault("ATHLETE_ID", "i123456")
 
 import intervals_mcp_server.server as server
 

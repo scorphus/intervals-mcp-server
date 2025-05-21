@@ -20,6 +20,7 @@ The server is designed to be run as a standalone script.
 from json import JSONDecodeError
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from http import HTTPStatus
@@ -77,6 +78,15 @@ INTERVALS_API_BASE_URL = os.getenv(
 API_KEY = os.getenv("API_KEY", "")  # Provide default empty string
 ATHLETE_ID = os.getenv("ATHLETE_ID", "")  # Default athlete ID from .env
 USER_AGENT = "intervalsicu-mcp-server/1.0"
+
+# Validate environment variables on import
+if API_KEY == "":
+    raise ValueError("API_KEY environment variable is not set or empty")
+
+if not re.fullmatch(r"i\d+", ATHLETE_ID):
+    raise ValueError(
+        "ATHLETE_ID must start with 'i' followed by digits, e.g. i123456"
+    )
 
 
 async def make_intervals_request(

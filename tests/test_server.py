@@ -1,11 +1,13 @@
 import sys
 import pathlib
 import asyncio
+import os
 
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[1] / "src" / "intervals_mcp_server")
 )
-import pytest
+os.environ.setdefault("API_KEY", "test-key")
+os.environ.setdefault("ATHLETE_ID", "i123456")
 from intervals_mcp_server.server import (
     get_activities,
     get_activity_details,
