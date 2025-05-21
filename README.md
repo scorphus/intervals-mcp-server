@@ -4,7 +4,7 @@ Model Context Protocol (MCP) server for connecting Claude with the Intervals.icu
 
 ## Requirements
 
-- Python 3.10 or higher
+- Python 3.12 or higher
 - [Model Context Protocol (MCP) Python SDK](https://github.com/modelcontextprotocol/python-sdk)
 - httpx
 - python-dotenv
