@@ -1,3 +1,17 @@
+"""
+Unit tests for the main MCP server tool functions in intervals_mcp_server.server.
+
+These tests use monkeypatching to mock API responses and verify the formatting and output of each tool function:
+- get_activities
+- get_activity_details
+- get_events
+- get_event_by_id
+- get_wellness_data
+- get_activity_intervals
+
+The tests ensure that the server's public API returns expected strings and handles data correctly.
+"""
+
 import sys
 import pathlib
 import asyncio
@@ -5,7 +19,6 @@ import asyncio
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[1] / "src" / "intervals_mcp_server")
 )
-import pytest
 from intervals_mcp_server.server import (
     get_activities,
     get_activity_details,
@@ -17,6 +30,9 @@ from intervals_mcp_server.server import (
 
 
 def test_get_activities(monkeypatch):
+    """
+    Test get_activities returns a formatted string containing activity details when given a sample activity.
+    """
     sample = {
         "name": "Morning Ride",
         "id": 123,
@@ -36,6 +52,9 @@ def test_get_activities(monkeypatch):
 
 
 def test_get_activity_details(monkeypatch):
+    """
+    Test get_activity_details returns a formatted string with the activity name and details.
+    """
     sample = {
         "name": "Morning Ride",
         "id": 123,
@@ -54,6 +73,9 @@ def test_get_activity_details(monkeypatch):
 
 
 def test_get_events(monkeypatch):
+    """
+    Test get_events returns a formatted string containing event details when given a sample event.
+    """
     event = {
         "date": "2024-01-01",
         "id": "e1",
@@ -72,6 +94,9 @@ def test_get_events(monkeypatch):
 
 
 def test_get_event_by_id(monkeypatch):
+    """
+    Test get_event_by_id returns a formatted string with event details for a given event ID.
+    """
     event = {
         "id": "e1",
         "date": "2024-01-01",
@@ -90,6 +115,9 @@ def test_get_event_by_id(monkeypatch):
 
 
 def test_get_wellness_data(monkeypatch):
+    """
+    Test get_wellness_data returns a formatted string containing wellness data for a given athlete.
+    """
     wellness = {
         "2024-01-01": {
             "id": "w1",
@@ -109,6 +137,9 @@ def test_get_wellness_data(monkeypatch):
 
 
 def test_get_activity_intervals(monkeypatch):
+    """
+    Test get_activity_intervals returns a formatted string with interval analysis for a given activity.
+    """
     intervals_data = {
         "id": "i1",
         "analyzed": True,
