@@ -5,16 +5,30 @@ This module implements a Model Context Protocol (MCP) server for connecting
 Claude with the Intervals.icu API. It provides tools for retrieving and managing
 athlete data, including activities, events, workouts, and wellness metrics.
 
-Key features:
-- Activity retrieval and detailed analysis
-- Event management (races, workouts, calendar items)
-- Wellness data tracking and visualization
-- Error handling with user-friendly messages
-- Configurable parameters with environment variable support
+Main Features:
+    - Activity retrieval and detailed analysis
+    - Event management (races, workouts, calendar items)
+    - Wellness data tracking and visualization
+    - Error handling with user-friendly messages
+    - Configurable parameters with environment variable support
 
-The server follows MCP specifications and uses the Python MCP SDK.
+Usage:
+    This server is designed to be run as a standalone script and exposes several MCP tools
+    for use with Claude Desktop or other MCP-compatible clients. The server loads configuration
+    from environment variables (optionally via a .env file) and communicates with the Intervals.icu API.
 
-The server is designed to be run as a standalone script.
+    To run the server:
+        $ python src/intervals_mcp_server/server.py
+
+    MCP tools provided:
+        - get_activities
+        - get_activity_details
+        - get_events
+        - get_event_by_id
+        - get_wellness_data
+        - get_activity_intervals
+
+    See the README for more details on configuration and usage.
 """
 
 from json import JSONDecodeError
@@ -61,7 +75,12 @@ httpx_client = httpx.AsyncClient()
 
 @asynccontextmanager
 async def lifespan(app: FastMCP):
-    """Ensure the shared httpx client is closed when the server stops."""
+    """
+    Context manager to ensure the shared httpx client is closed when the server stops.
+
+    Args:
+        app (FastMCP): The MCP server application instance.
+    """
     try:
         yield
     finally:
@@ -92,8 +111,17 @@ if not re.fullmatch(r"i\d+", ATHLETE_ID):
 async def make_intervals_request(
     url: str, api_key: str | None = None, params: dict[str, Any] | None = None
 ) -> dict[str, Any] | list[dict[str, Any]]:
-    """Make a GET request to the Intervals.icu API with proper error handling."""
+    """
+    Make a GET request to the Intervals.icu API with proper error handling.
 
+    Args:
+        url (str): The API endpoint path (e.g., '/athlete/{id}/activities').
+        api_key (str | None): Optional API key to use for authentication. Defaults to the global API_KEY.
+        params (dict[str, Any] | None): Optional query parameters for the request.
+
+    Returns:
+        dict[str, Any] | list[dict[str, Any]]: The parsed JSON response from the API, or an error dict.
+    """
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
     # Use provided api_key or fall back to global API_KEY
