@@ -120,8 +120,7 @@ async def test_server_get_athlete():
     assert server.API_KEY is not None
     assert server.ATHLETE_ID is not None
     response = await server.get_athlete(
-        athlete_id=server.ATHLETE_ID,
-        api_key=server.API_KEY,
+        athlete_id=server.ATHLETE_ID, api_key=server.API_KEY
     )
     print(response)
     # Save the response to athlete.json
@@ -136,8 +135,7 @@ async def test_server_get_activity_pace_curve():
     assert server.API_KEY is not None
     assert server.ATHLETE_ID is not None
     response = await server.get_activity_pace_curve(
-        activity_id="i78699351",
-        api_key=server.API_KEY,
+        activity_id="i78699351", api_key=server.API_KEY
     )
     print(response)
     # Save the response to activity_pace_curve.json
@@ -157,4 +155,49 @@ async def test_server_list_events():
     print(response)
     # Save the response to list_events.json
     with open("list_events.json", "w") as f:
+        json.dump(response, f)
+
+
+@pytest.mark.asyncio
+async def test_server_get_power_hr_curve():
+    env = load_dotenv()
+    assert env is not None
+    assert server.API_KEY is not None
+    assert server.ATHLETE_ID is not None
+    response = await server.get_power_hr_curve(
+        athlete_id=server.ATHLETE_ID, api_key=server.API_KEY
+    )
+    print(response)
+    # Save the response to get_power_hr_curve.json
+    with open("get_power_hr_curve.json", "w") as f:
+        json.dump(response, f)
+
+
+@pytest.mark.asyncio
+async def test_server_get_activity_power_vs_hr():
+    env = load_dotenv()
+    assert env is not None
+    assert server.API_KEY is not None
+    assert server.ATHLETE_ID is not None
+    response = await server.get_activity_power_vs_hr(
+        activity_id="i77881313", api_key=server.API_KEY
+    )
+    print(response)
+    # Save the response to get_activity_power_vs_hr.json
+    with open("get_activity_power_vs_hr.json", "w") as f:
+        json.dump(response, f)
+
+
+@pytest.mark.asyncio
+async def test_server_get_activity_hr_curve():
+    env = load_dotenv()
+    assert env is not None
+    assert server.API_KEY is not None
+    assert server.ATHLETE_ID is not None
+    response = await server.get_activity_hr_curve(
+        activity_id="i77881313", api_key=server.API_KEY
+    )
+    print(response)
+    # Save the response to get_activity_hr_curve.json
+    with open("get_activity_hr_curve.json", "w") as f:
         json.dump(response, f)
