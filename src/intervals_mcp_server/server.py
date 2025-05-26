@@ -31,7 +31,6 @@ Usage:
     See the README for more details on configuration and usage.
 """
 
-import json
 import logging
 import os
 import re

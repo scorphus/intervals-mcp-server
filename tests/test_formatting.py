@@ -6,11 +6,11 @@ These tests verify that the formatting functions produce expected output strings
 
 from intervals_mcp_server.utils.formatting import (
     format_activity_summary,
-    format_workout,
-    format_wellness_entry,
-    format_event_summary,
     format_event_details,
+    format_event_summary,
     format_intervals,
+    format_wellness_entry,
+    format_workout,
 )
 
 
