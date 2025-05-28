@@ -49,12 +49,9 @@ Automated dependency upgrades are encouraged. You can use Dependabot, Renovate, 
 Before opening a pull request, ensure all checks pass locally:
 
 ```bash
-ruff .
+ruff check .
 mypy src tests
 pytest
-```
-
-CI runs the same commands, so catching issues locally saves time.
 
 ## Pull request guidelines
 
