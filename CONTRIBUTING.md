@@ -51,7 +51,7 @@ Before opening a pull request, ensure all checks pass locally:
 ```bash
 ruff check .
 mypy src tests
-pytest
+uv run --locked pytest
 
 ## Pull request guidelines
 
