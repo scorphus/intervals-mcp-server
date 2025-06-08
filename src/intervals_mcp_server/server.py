@@ -998,6 +998,45 @@ async def get_activity_hr_curve(
     return result if isinstance(result, dict) else {}
 
 
+@mcp.tool()
+async def get_current_date_info() -> dict[str, Any]:
+    """Get current date and time information
+
+    Returns comprehensive information about the current date including
+    day of week, week number, and relative day calculations.
+
+    Returns:
+        Dictionary containing current date information:
+        - current_date: ISO format date (YYYY-MM-DD)
+        - day_of_week: Full day name (e.g., "Sunday")
+        - week_number: ISO week number (1-53)
+        - days_until_weekend: Days until Saturday (0-6)
+        - is_weekend: Whether today is Saturday or Sunday
+        - year: Current year
+        - month: Current month (1-12)
+        - day: Current day of month (1-31)
+    """
+    from datetime import datetime
+
+    now = datetime.now()
+
+    # Calculate days until weekend (Saturday = 5, Sunday = 6 in weekday())
+    # weekday(): Monday=0, Tuesday=1, ..., Sunday=6
+    current_weekday = now.weekday()  # 0=Monday, 6=Sunday
+    days_until_saturday = (5 - current_weekday) % 7  # Saturday is weekday 5
+
+    return {
+        "current_date": now.strftime("%Y-%m-%d"),
+        "day_of_week": now.strftime("%A"),
+        "week_number": int(now.strftime("%W")),  # ISO week number
+        "days_until_weekend": days_until_saturday,
+        "is_weekend": current_weekday in [5, 6],  # Saturday=5, Sunday=6
+        "year": now.year,
+        "month": now.month,
+        "day": now.day,
+    }
+
+
 # Run the server
 if __name__ == "__main__":
     mcp.run()
