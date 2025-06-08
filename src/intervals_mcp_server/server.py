@@ -32,6 +32,14 @@ Usage:
         - calculate_date_info
         - get_current_date_and_time_info
         - download_workout_zwo
+        - get_races
+        - get_power_curves
+        - get_activity_power_curves
+        - get_pace_curves
+        - get_activity_pace_curve
+        - get_power_hr_curve
+        - get_activity_power_vs_hr
+        - get_activity_hr_curve
 
     See the README for more details on configuration and usage.
 """
