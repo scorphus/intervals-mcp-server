@@ -35,8 +35,9 @@ from json import JSONDecodeError
 import logging
 import os
 import re
+import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from typing import Any
 
@@ -1025,9 +1026,6 @@ async def get_current_date_and_time_info() -> dict[str, Any]:
         - minute: Current minute (0-59)
         - second: Current second (0-59)
     """
-    import time
-    from datetime import datetime, timezone
-
     # Get local time with timezone info
     now_local = datetime.now()
     now_utc = datetime.now(timezone.utc)
@@ -1090,8 +1088,6 @@ async def calculate_date_info(date: str) -> dict[str, Any]:
         - is_future: Whether the date is in the future
         - is_today: Whether the date is today
     """
-    from datetime import datetime, timedelta
-
     try:
         # Parse the input date
         target_date = datetime.strptime(date, "%Y-%m-%d")

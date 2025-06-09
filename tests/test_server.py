@@ -17,7 +17,7 @@ import os
 import pathlib
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 os.environ.setdefault("API_KEY", "test")
@@ -232,8 +232,6 @@ def test_calculate_date_info():
     """
     Test calculate_date_info returns correct information for given dates
     """
-    from datetime import datetime, timedelta
-
     # Test with today's date
     today = datetime.now().strftime("%Y-%m-%d")
     result = asyncio.run(calculate_date_info(today))
