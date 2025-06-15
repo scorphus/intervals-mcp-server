@@ -625,17 +625,17 @@ async def add_events(  # pylint: disable=too-many-arguments,too-many-locals,too-
         "distance": "5000",  # Total expected distance of the workout in meters
         "description": "- 15m 80% Warm-up\n- 500m 110% High-intensity interval\n- 90s 80% Recovery\n- 500m 110% High-intensity interval\n- 10m 80% Cool-down"  # Important! See formatting details below
     }
-    
+
     Common workout types:
         - "Run" for running workouts
         - "Ride" for cycling workouts
         - "Swim" for swimming workouts
         - "Walk" for walking/hiking
         - "Row" for rowing
-    
+
     Description:
         Description of the workout including steps and target (see details on formatting at https://forum.intervals.icu/t/workout-builder/1163/12)
-        Each step is on a line starting with a dash (-) and then the duration/distance, intensity, and description. Sections of steps can be repeated 
+        Each step is on a line starting with a dash (-) and then the duration/distance, intensity, and description. Sections of steps can be repeated
         by preceding them with a line starting with "Nx" and an optional description, where N is the number of times to repeat the section.
         Other lines can be used to add additional information such as a description of the workout or a note.
         Important: m = minutes, mtr = meters
@@ -653,12 +653,15 @@ async def add_events(  # pylint: disable=too-many-arguments,too-many-locals,too-
             Absolute power: 200w
             Heart rate: 75% HR or 85% LTHR
             Cadence: 90 rpm
-            Pace: 6:00/km
+            Pace: 85% Pace
             Zone by power: Z2
             Zone by heart rate: Z2 HR
+            Pace zone: Z2 Pace
+            Important: FTP only for rides, Pace for all else except rides.
         Ranges: Specify ranges for power, heart rate, or cadence:
             80-90%
             Z2
+            Z1-Z2
             100-140w
             70-80% HR
             85-95 rpm
@@ -666,6 +669,7 @@ async def add_events(  # pylint: disable=too-many-arguments,too-many-locals,too-
         Ramps: Indicate a gradual change in intensity (useful for ERG workouts):
             Ramp 60-80%
             Ramp 100-200w
+            Ramp 75-85% Pace
         Repeats: Use Nx (on a separate line!) to repeat a set of steps (all steps immediately following this line), where N is the number of times to repeat the section:
             3x
         Free Ride: Include free to indicate a segment without ERG control, optionally with a suggested power range:
@@ -675,15 +679,39 @@ async def add_events(  # pylint: disable=too-many-arguments,too-many-locals,too-
         Advanced Options:
             Specify intensity type: intensity=active, intensity=recovery, etc.
             Set power target averaging: power: 1s
+        Important: Warmups and cooldowns are usually ramps
 
-    Example of description for interval training:
-        - 15m 80% Warm-up
+    Example of description for interval training (run):
+        - 15m 80% Pace Warm-up
 
         4x repeats of the following:
-        - 200mtr 110% High-intensity interval
-        - 60s 80% Recovery
+        - 200mtr 110% Pace High-intensity interval
+        - 60s 80% Pace Recovery
 
-        - 8m 80% Cool-down
+        - 8m 80% Pace Cool-down
+
+    Example of description for a cycling workout with no comments:
+        - 8m z1
+        - 4m ramp z1-z3
+
+        5x
+        - 45s 95%
+        - 2m15s 65%
+
+        3x
+        - 20s 110%
+        - 1m40s 65%
+
+        - 8m z1
+
+    Example of description for a swim workout:
+        - 25mtr 82-86% Pace Warmup
+
+        10x
+        - 100mtr 95% Pace Work
+        - 30s 0.0% Pace Rest
+
+        - 25mtr 82-86% Pace Cooldown
 
     Args:
         athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
