@@ -115,10 +115,6 @@ API_KEY = os.getenv("API_KEY", "")  # Provide default empty string
 ATHLETE_ID = os.getenv("ATHLETE_ID", "")  # Default athlete ID from .env
 USER_AGENT = "intervalsicu-mcp-server/1.0"
 
-# Validate environment variables on import
-if API_KEY == "":
-    raise ValueError("API_KEY environment variable is not set or empty")
-
 # Accept athlete IDs that are either all digits or start with 'i' followed by digits
 if not re.fullmatch(r"i?\d+", ATHLETE_ID):
     raise ValueError(
@@ -908,6 +904,39 @@ async def get_athlete(
 
 
 @mcp.tool()
+async def get_athlete(
+    athlete_id: str | None = None,
+    api_key: str | None = None,
+) -> dict | str:
+    """Get detailed information for an athlete from Intervals.icu
+
+    Args:
+        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
+        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+
+    Returns:
+        Dictionary containing comprehensive athlete data including sport settings and custom items
+    """
+    # Use provided athlete_id or fall back to global ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    if not athlete_id_to_use:
+        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
+
+    # Call the Intervals.icu API
+    result = await make_intervals_request(
+        url=f"/athlete/{athlete_id_to_use}",
+        api_key=api_key,
+        params={},
+    )
+
+    if isinstance(result, dict) and "error" in result:
+        error_message = result.get("message", "Unknown error")
+        return f"Error fetching athlete data: {error_message}"
+
+    return result if isinstance(result, dict) else {}
+
+
+@mcp.tool()
 async def get_current_date_and_time_info() -> dict[str, Any]:
     """Get current date and time information
 
@@ -1282,39 +1311,6 @@ async def get_activity_pace_curve(
     if isinstance(result, dict) and "error" in result:
         error_message = result.get("message", "Unknown error")
         return f"Error fetching activity power curve: {error_message}"
-
-    return result if isinstance(result, dict) else {}
-
-
-@mcp.tool()
-async def get_athlete(
-    athlete_id: str | None = None,
-    api_key: str | None = None,
-) -> dict | str:
-    """Get detailed information for an athlete from Intervals.icu
-
-    Args:
-        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
-        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
-
-    Returns:
-        Dictionary containing comprehensive athlete data including sport settings and custom items
-    """
-    # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
-    if not athlete_id_to_use:
-        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
-
-    # Call the Intervals.icu API
-    result = await make_intervals_request(
-        url=f"/athlete/{athlete_id_to_use}",
-        api_key=api_key,
-        params={},
-    )
-
-    if isinstance(result, dict) and "error" in result:
-        error_message = result.get("message", "Unknown error")
-        return f"Error fetching athlete data: {error_message}"
 
     return result if isinstance(result, dict) else {}
 
