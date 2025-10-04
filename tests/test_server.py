@@ -25,16 +25,25 @@ os.environ.setdefault("API_KEY", "test")
 os.environ.setdefault("ATHLETE_ID", "i1")
 
 from intervals_mcp_server.server import (  # pylint: disable=wrong-import-position
+    add_or_update_event,
     calculate_date_info,
+    download_workout_zwo,
     get_activities,
     get_activity_details,
-    get_current_date_and_time_info,
-    get_events,
-    get_event_by_id,
-    get_wellness_data,
+    get_activity_hr_curve,
     get_activity_intervals,
-    add_or_update_event,
-    download_workout_zwo,
+    get_activity_pace_curve,
+    get_activity_power_curves,
+    get_activity_power_vs_hr,
+    get_current_date_and_time_info,
+    get_event_by_id,
+    get_events,
+    get_pace_curves,
+    get_power_curves,
+    get_power_hr_curve,
+    get_races,
+    get_wellness_data,
+    list_events,
 )
 from tests.sample_data import INTERVALS_DATA  # pylint: disable=wrong-import-position
 
@@ -80,6 +89,55 @@ def test_get_activity_details(monkeypatch):
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(get_activity_details(123))
     assert "Activity: Morning Ride" in result
+
+
+def test_get_activity_power_curves(monkeypatch):
+    """
+    Test get_activity_power_curves returns power curve data for a given activity.
+    """
+    sample_power_curves = [
+        {"secs": 1, "watts": 1200},
+        {"secs": 5, "watts": 800},
+        {"secs": 10, "watts": 600},
+        {"secs": 60, "watts": 400},
+        {"secs": 300, "watts": 350},
+        {"secs": 1200, "watts": 300},
+    ]
+
+    async def fake_request(*_args, **_kwargs):
+        return sample_power_curves
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_activity_power_curves("123"))
+    assert isinstance(result, list)
+    assert len(result) == 6
+    assert result[0]["secs"] == 1
+    assert result[0]["watts"] == 1200
+
+
+def test_get_activity_power_curves_with_error(monkeypatch):
+    """
+    Test get_activity_power_curves handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "Activity not found"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(get_activity_power_curves("123"))
+    assert isinstance(result, str)
+    assert "Error fetching activity power curve" in result
+    assert "Activity not found" in result
+
+
+def test_get_activity_power_curves_missing_id():
+    """
+    Test get_activity_power_curves returns error when activity_id is missing.
+    """
+    result = asyncio.run(get_activity_power_curves(""))
+    assert result == "Error: Activity ID is required."
+
+    result = asyncio.run(get_activity_power_curves(None))
+    assert result == "Error: Activity ID is required."
 
 
 def test_get_events(monkeypatch):
@@ -390,3 +448,295 @@ def test_download_workout_zwo_no_workout_file(monkeypatch):
 
     assert "Error:" in result
     assert "No workout file found" in result
+
+
+def test_list_events(monkeypatch):
+    """
+    Test list_events returns a list of event dictionaries.
+    """
+    sample_events = [
+        {
+            "id": "e1",
+            "start_date_local": "2024-01-01T00:00:00",
+            "category": "RACE_A",
+            "name": "Big Race",
+        },
+        {
+            "id": "e2",
+            "start_date_local": "2024-01-15T00:00:00",
+            "category": "WORKOUT",
+            "name": "Interval Session",
+        },
+    ]
+
+    async def fake_request(*_args, **_kwargs):
+        return sample_events
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(list_events(athlete_id="1"))
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert result[0]["id"] == "e1"
+    assert result[1]["name"] == "Interval Session"
+
+
+def test_list_events_with_error(monkeypatch):
+    """
+    Test list_events handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "Athlete not found"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(list_events(athlete_id="1"))
+    assert isinstance(result, str)
+    assert "Error fetching events" in result
+
+
+def test_get_races(monkeypatch):
+    """
+    Test get_races returns formatted race event data.
+    """
+    sample_events = [
+        {
+            "id": "e1",
+            "start_date_local": "2024-06-01T00:00:00",
+            "category": "RACE_A",
+            "name": "Marathon Championship",
+            "race": True,
+        }
+    ]
+
+    async def fake_request(*_args, **_kwargs):
+        return sample_events
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_races(athlete_id="1"))
+    assert "Marathon Championship" in result
+    assert "Races:" in result
+
+
+def test_get_power_curves(monkeypatch):
+    """
+    Test get_power_curves returns power curve data.
+    """
+    sample_curves = [
+        {"secs": 5, "watts": 1200},
+        {"secs": 60, "watts": 400},
+        {"secs": 300, "watts": 350},
+    ]
+
+    async def fake_request(*_args, **_kwargs):
+        return {"list": sample_curves}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_power_curves(athlete_id="1"))
+    assert isinstance(result, list)
+    assert len(result) == 3
+    assert result[0]["watts"] == 1200
+
+
+def test_get_power_curves_with_error(monkeypatch):
+    """
+    Test get_power_curves handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "No power data available"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(get_power_curves(athlete_id="1"))
+    assert isinstance(result, str)
+    assert "Error fetching power curves" in result
+
+
+def test_get_pace_curves(monkeypatch):
+    """
+    Test get_pace_curves returns pace curve data.
+    """
+    sample_curves = [
+        {"secs": 5, "pace": 180},
+        {"secs": 60, "pace": 240},
+        {"secs": 300, "pace": 260},
+    ]
+
+    async def fake_request(*_args, **_kwargs):
+        return {"list": sample_curves}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_pace_curves(athlete_id="1"))
+    assert isinstance(result, list)
+    assert len(result) == 3
+    assert result[0]["pace"] == 180
+
+
+def test_get_pace_curves_with_error(monkeypatch):
+    """
+    Test get_pace_curves handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "No pace data available"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(get_pace_curves(athlete_id="1"))
+    assert isinstance(result, str)
+    assert "Error fetching pace curves" in result
+
+
+def test_get_activity_pace_curve(monkeypatch):
+    """
+    Test get_activity_pace_curve returns pace curve data for a specific activity.
+    """
+    sample_curve = {
+        "id": "i123",
+        "secs": [1, 5, 10, 60, 300],
+        "values": [180, 185, 190, 240, 260],
+    }
+
+    async def fake_request(*_args, **_kwargs):
+        return sample_curve
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_activity_pace_curve("i123"))
+    assert isinstance(result, dict)
+    assert result["id"] == "i123"
+    assert len(result["secs"]) == 5
+
+
+def test_get_activity_pace_curve_with_error(monkeypatch):
+    """
+    Test get_activity_pace_curve handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "Activity not found"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(get_activity_pace_curve("i123"))
+    assert isinstance(result, str)
+    assert "Error fetching activity power curve" in result
+
+
+def test_get_activity_pace_curve_missing_id():
+    """
+    Test get_activity_pace_curve returns error when activity_id is missing.
+    """
+    result = asyncio.run(get_activity_pace_curve(""))
+    assert result == "Error: Activity ID is required."
+
+
+def test_get_power_hr_curve(monkeypatch):
+    """
+    Test get_power_hr_curve returns power vs HR curve data.
+    """
+    sample_curve = {
+        "bucketSize": 10,
+        "buckets": [
+            {"watts": 100, "hr": 120, "secs": 3600},
+            {"watts": 150, "hr": 140, "secs": 1800},
+        ],
+    }
+
+    async def fake_request(*_args, **_kwargs):
+        return sample_curve
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_power_hr_curve(athlete_id="1"))
+    assert isinstance(result, dict)
+    assert result["bucketSize"] == 10
+    assert len(result["buckets"]) == 2
+
+
+def test_get_power_hr_curve_with_error(monkeypatch):
+    """
+    Test get_power_hr_curve handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "No data available"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(get_power_hr_curve(athlete_id="1"))
+    assert isinstance(result, str)
+    assert "Error fetching power_hr curve" in result
+
+
+def test_get_activity_power_vs_hr(monkeypatch):
+    """
+    Test get_activity_power_vs_hr returns power vs HR data for an activity.
+    """
+    sample_data = {
+        "bucketSize": 10,
+        "hrLag": 10,
+        "powerHr": 2.5,
+        "buckets": [{"watts": 200, "hr": 150}],
+    }
+
+    async def fake_request(*_args, **_kwargs):
+        return sample_data
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_activity_power_vs_hr("i123"))
+    assert isinstance(result, dict)
+    assert result["hrLag"] == 10
+    assert result["powerHr"] == 2.5
+
+
+def test_get_activity_power_vs_hr_with_error(monkeypatch):
+    """
+    Test get_activity_power_vs_hr handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "Activity not found"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(get_activity_power_vs_hr("i123"))
+    assert isinstance(result, str)
+    assert "Error fetching activity power vs HR data" in result
+
+
+def test_get_activity_power_vs_hr_missing_id():
+    """
+    Test get_activity_power_vs_hr returns error when activity_id is missing.
+    """
+    result = asyncio.run(get_activity_power_vs_hr(""))
+    assert result == "Error: Activity ID is required."
+
+
+def test_get_activity_hr_curve(monkeypatch):
+    """
+    Test get_activity_hr_curve returns HR curve data for an activity.
+    """
+    sample_curve = {
+        "id": "i123",
+        "secs": [1, 5, 10, 60, 300],
+        "values": [150, 155, 160, 165, 170],
+    }
+
+    async def fake_request(*_args, **_kwargs):
+        return sample_curve
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(get_activity_hr_curve("i123"))
+    assert isinstance(result, dict)
+    assert result["id"] == "i123"
+    assert len(result["secs"]) == 5
+    assert result["values"][0] == 150
+
+
+def test_get_activity_hr_curve_with_error(monkeypatch):
+    """
+    Test get_activity_hr_curve handles API errors gracefully.
+    """
+    async def fake_request_error(*_args, **_kwargs):
+        return {"error": True, "message": "Activity not found"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
+    result = asyncio.run(get_activity_hr_curve("i123"))
+    assert isinstance(result, str)
+    assert "Error fetching activity HR curve" in result
+
+
+def test_get_activity_hr_curve_missing_id():
+    """
+    Test get_activity_hr_curve returns error when activity_id is missing.
+    """
+    result = asyncio.run(get_activity_hr_curve(""))
+    assert result == "Error: Activity ID is required."
