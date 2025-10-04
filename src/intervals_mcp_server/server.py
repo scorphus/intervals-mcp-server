@@ -1203,7 +1203,7 @@ async def get_activity_power_curves(
     activity_id: str,
     api_key: str | None = None,
     type_: str = "power",
-) -> list[dict[str, float]] | str:
+) -> list[dict[str, Any]] | str:
     """Get power curves for a specific activity from Intervals.icu
 
     Args:
