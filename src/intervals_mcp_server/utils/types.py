@@ -165,7 +165,7 @@ class Value:
     def __str__(self) -> str:
         val = ""
         if self.start is not None and self.end is not None:
-            val += f"{self._format_value(self.start)} - {self._format_value(self.end)} "
+            val += f"{self._format_value(self.start)}-{self._format_value(self.end)} "
         elif self.value is not None:
             val += f"{self._format_value(self.value)} "
         if self.units is not None:
