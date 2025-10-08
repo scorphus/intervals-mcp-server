@@ -197,7 +197,7 @@ def format_activity_summary(activity: dict[str, Any]) -> str:  # pylint: disable
         other_section.append("Weight: {weight} kg")
         other_section.append("RPE: {value}/10", value_key=["perceived_exertion", "icu_rpe"])
         other_section.append("Session RPE: {session_rpe}")
-        other_section.append("Feel: {feel}/5")
+        other_section.append("Feel: {feel}/5 (lower is better)")
 
     with Section(lines, data=activity, heading="Environment:", indent='- ') as environment_section:
         environment_section.append("Trainer: {trainer}")
