@@ -31,11 +31,13 @@ Usage:
         - add_events
         - calculate_date_info
         - get_current_date_and_time_info
+        - download_workout_zwo
 
     See the README for more details on configuration and usage.
 """
 
 from json import JSONDecodeError
+import base64
 import logging
 import os
 import re
@@ -145,7 +147,8 @@ async def make_intervals_request(
     params: dict[str, Any] | None = None,
     method: str = "GET",
     data: dict[str, Any] | None = None,
-) -> dict[str, Any] | list[dict[str, Any]]:
+    raw_response: bool = False,
+) -> dict[str, Any] | list[dict[str, Any]] | str:
     """
     Make a request to the Intervals.icu API with proper error handling.
 
@@ -188,6 +191,8 @@ async def make_intervals_request(
             timeout=30.0,
             content=json.dumps(data) if has_body and data is not None else None,
         )
+        if raw_response:
+            return response.text
         try:
             response_data = response.json() if response.content else {}
         except JSONDecodeError:
@@ -949,6 +954,44 @@ async def calculate_date_info(date: str) -> dict[str, Any]:
             "error": True,
             "message": f"Invalid date format. Expected YYYY-MM-DD, got: {date}. Error: {str(e)}",
         }
+
+
+@mcp.tool()
+async def download_workout_zwo(
+    event_id: str,
+    athlete_id: str | None = None,
+    api_key: str | None = None,
+) -> str:
+    """Download a workout in Zwift (zwo) format from Intervals.icu
+
+    This endpoint retrieves a workout file in Zwift format, which can be imported into Zwift
+    or other training platforms that support the ZWO format.
+
+    Args:
+        event_id: The Intervals.icu event ID for the workout
+        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
+        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+
+    Returns:
+        The workout file content in Zwift (zwo) XML format as a string
+    """
+    # Use provided athlete_id or fall back to global ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    if not athlete_id_to_use:
+        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
+
+    # Call the Intervals.icu API
+    result = await make_intervals_request(
+        url=f"/athlete/{athlete_id_to_use}/events/{event_id}/downloadzwo",
+        api_key=api_key,
+        raw_response=True,
+    )
+
+    if isinstance(result, dict) and "error" in result:
+        error_message = result.get("message", "Unknown error")
+        return f"Error downloading workout: {error_message}"
+
+    return result
 
 
 # Run the server
