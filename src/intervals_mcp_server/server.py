@@ -58,14 +58,6 @@ import json
 import httpx  # pylint: disable=import-error
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
 
-# Import formatting utilities
-from intervals_mcp_server.utils.formatting import (
-    format_activity_summary,
-    format_event_details,
-    format_intervals,
-    format_wellness_entry,
-)
-
 from intervals_mcp_server.utils.types import WorkoutDoc
 
 # Try to load environment variables from .env file if it exists
@@ -285,31 +277,6 @@ async def _fetch_more_activities(
     return []
 
 
-def _format_activities_response(
-    activities: list[dict[str, Any]],
-    athlete_id: str,
-    include_unnamed: bool,
-) -> str:
-    """Format the activities response based on the results."""
-    if not activities:
-        if include_unnamed:
-            return (
-                f"No valid activities found for athlete {athlete_id} in the specified date range."
-            )
-        return f"No named activities found for athlete {athlete_id} in the specified date range. Try with include_unnamed=True to see all activities."
-
-    # Format the output
-    activities_summary = "Activities:"
-    for activity in activities:
-        activities_summary += "\n\n"
-        if isinstance(activity, dict):
-            activities_summary += format_activity_summary(activity)
-        else:
-            activities_summary += f"Invalid activity format: {activity}"
-
-    return activities_summary
-
-
 @mcp.tool()
 async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-statements,too-many-branches,too-many-positional-arguments
     athlete_id: str | None = None,
@@ -318,7 +285,7 @@ async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-
     end_date: str | None = None,
     limit: int = 10,
     include_unnamed: bool = False,
-) -> str:
+) -> list[dict] | str:
     """Get a list of activities for an athlete from Intervals.icu
 
     Args:
@@ -328,6 +295,9 @@ async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-
         end_date: End date in YYYY-MM-DD format (optional, defaults to today)
         limit: Maximum number of activities to return (optional, defaults to 10)
         include_unnamed: Whether to include unnamed activities (optional, defaults to False)
+
+    Returns:
+        List of activity dictionaries or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
     athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
@@ -377,16 +347,19 @@ async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-
     # Limit to requested count
     activities = activities[:limit]
 
-    return _format_activities_response(activities, athlete_id_to_use, include_unnamed)
+    return activities
 
 
 @mcp.tool()
-async def get_activity_details(activity_id: str, api_key: str | None = None) -> str:
+async def get_activity_details(activity_id: str, api_key: str | None = None) -> dict | str:
     """Get detailed information for a specific activity from Intervals.icu
 
     Args:
         activity_id: The Intervals.icu activity ID
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+
+    Returns:
+        Dictionary containing activity details or error message
     """
     # Call the Intervals.icu API
     result = await make_intervals_request(url=f"/activity/{activity_id}", api_key=api_key)
@@ -404,25 +377,11 @@ async def get_activity_details(activity_id: str, api_key: str | None = None) -> 
     if not isinstance(activity_data, dict):
         return f"Invalid activity format for activity {activity_id}."
 
-    # Return a more detailed view of the activity
-    detailed_view = format_activity_summary(activity_data)
-
-    # Add additional details if available
-    if "zones" in activity_data:
-        zones = activity_data["zones"]
-        detailed_view += "\nPower Zones:\n"
-        for zone in zones.get("power", []):
-            detailed_view += f"Zone {zone.get('number')}: {zone.get('secondsInZone')} seconds\n"
-
-        detailed_view += "\nHeart Rate Zones:\n"
-        for zone in zones.get("hr", []):
-            detailed_view += f"Zone {zone.get('number')}: {zone.get('secondsInZone')} seconds\n"
-
-    return detailed_view
+    return activity_data
 
 
 @mcp.tool()
-async def get_activity_intervals(activity_id: str, api_key: str | None = None) -> str:
+async def get_activity_intervals(activity_id: str, api_key: str | None = None) -> dict | str:
     """Get interval data for a specific activity from Intervals.icu
 
     This endpoint returns detailed metrics for each interval in an activity, including power, heart rate,
@@ -431,6 +390,9 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
     Args:
         activity_id: The Intervals.icu activity ID
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+
+    Returns:
+        Dictionary containing interval data or error message
     """
     # Call the Intervals.icu API
     result = await make_intervals_request(url=f"/activity/{activity_id}/intervals", api_key=api_key)
@@ -449,12 +411,7 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
     ):
         return f"No interval data or unrecognized format for activity {activity_id}."
 
-    # Get activity type from new API call
-    activity_result = await make_intervals_request(url=f"/activity/{activity_id}", api_key=api_key)
-    activity_type = activity_result.get("type")
-
-    # Format the intervals data
-    return format_intervals(result, activity_type)
+    return result
 
 
 @mcp.tool()
@@ -535,13 +492,16 @@ async def get_event_by_id(
     event_id: str,
     athlete_id: str | None = None,
     api_key: str | None = None,
-) -> str:
+) -> dict | str:
     """Get detailed information for a specific event from Intervals.icu
 
     Args:
         event_id: The Intervals.icu event ID
         athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+
+    Returns:
+        Dictionary containing event details or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
     athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
@@ -564,7 +524,7 @@ async def get_event_by_id(
     if not isinstance(result, dict):
         return f"Invalid event format for event {event_id}."
 
-    return format_event_details(result)
+    return result
 
 
 @mcp.tool()
@@ -573,7 +533,7 @@ async def get_wellness_data(
     api_key: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-) -> str:
+) -> dict | list | str:
     """Get wellness data for an athlete from Intervals.icu
 
     Args:
@@ -581,6 +541,9 @@ async def get_wellness_data(
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
         start_date: Start date in YYYY-MM-DD format (optional, defaults to 30 days ago)
         end_date: End date in YYYY-MM-DD format (optional, defaults to today)
+
+    Returns:
+        Dictionary or list containing wellness data, or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
     athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
@@ -609,21 +572,7 @@ async def get_wellness_data(
             f"No wellness data found for athlete {athlete_id_to_use} in the specified date range."
         )
 
-    wellness_summary = "Wellness Data:\n\n"
-
-    # Handle both list and dictionary responses
-    if isinstance(result, dict):
-        for date_str, data in result.items():
-            # Add the date to the data dictionary if it's not already present
-            if isinstance(data, dict) and "date" not in data:
-                data["date"] = date_str
-            wellness_summary += format_wellness_entry(data) + "\n\n"
-    elif isinstance(result, list):
-        for entry in result:
-            if isinstance(entry, dict):
-                wellness_summary += format_wellness_entry(entry) + "\n\n"
-
-    return wellness_summary
+    return result
 
 
 def _resolve_workout_type(name: str | None, workout_type: str | None) -> str:

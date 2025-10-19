@@ -48,7 +48,7 @@ from tests.sample_data import INTERVALS_DATA  # pylint: disable=wrong-import-pos
 
 def test_get_activities(monkeypatch):
     """
-    Test get_activities returns a formatted string containing activity details when given a sample activity.
+    Test get_activities returns a list of activity dictionaries.
     """
     sample = {
         "name": "Morning Ride",
@@ -64,13 +64,15 @@ def test_get_activities(monkeypatch):
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(get_activities(athlete_id="1", limit=1, include_unnamed=True))
-    assert "Morning Ride" in result
-    assert "Activities:" in result
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["name"] == "Morning Ride"
+    assert result[0]["id"] == 123
 
 
 def test_get_activity_details(monkeypatch):
     """
-    Test get_activity_details returns a formatted string with the activity name and details.
+    Test get_activity_details returns a dictionary with activity details.
     """
     sample = {
         "name": "Morning Ride",
@@ -86,7 +88,9 @@ def test_get_activity_details(monkeypatch):
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(get_activity_details(123))
-    assert "Activity: Morning Ride" in result
+    assert isinstance(result, dict)
+    assert result["name"] == "Morning Ride"
+    assert result["id"] == 123
 
 
 def test_get_activity_power_curves(monkeypatch):
@@ -140,7 +144,7 @@ def test_get_activity_power_curves_missing_id():
 
 def test_get_event_by_id(monkeypatch):
     """
-    Test get_event_by_id returns a formatted string with event details for a given event ID.
+    Test get_event_by_id returns a dictionary with event details.
     """
     event = {
         "id": "e1",
@@ -155,13 +159,14 @@ def test_get_event_by_id(monkeypatch):
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(get_event_by_id("e1", athlete_id="1"))
-    assert "Event Details:" in result
-    assert "Test Event" in result
+    assert isinstance(result, dict)
+    assert result["id"] == "e1"
+    assert result["name"] == "Test Event"
 
 
 def test_get_wellness_data(monkeypatch):
     """
-    Test get_wellness_data returns a formatted string containing wellness data for a given athlete.
+    Test get_wellness_data returns wellness data as dict or list.
     """
     wellness = {
         "2024-01-01": {
@@ -176,13 +181,13 @@ def test_get_wellness_data(monkeypatch):
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(get_wellness_data(athlete_id="1"))
-    assert "Wellness Data:" in result
+    assert isinstance(result, dict)
     assert "2024-01-01" in result
 
 
 def test_get_activity_intervals(monkeypatch):
     """
-    Test get_activity_intervals returns a formatted string with interval analysis for a given activity.
+    Test get_activity_intervals returns a dictionary with interval data.
     """
 
     async def fake_request(*_args, **_kwargs):
@@ -190,8 +195,8 @@ def test_get_activity_intervals(monkeypatch):
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(get_activity_intervals("123"))
-    assert "Intervals Analysis:" in result
-    assert "Rep 1" in result
+    assert isinstance(result, dict)
+    assert "icu_intervals" in result or "icu_groups" in result
 
 
 def test_add_or_update_event(monkeypatch):
