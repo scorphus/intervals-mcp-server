@@ -19,8 +19,8 @@ async def test():
     print(activities_result)
     print('\n' + '='*80 + '\n')
 
-    # You'll need to manually provide an activity ID here
-    activity_id = input('Enter an activity ID to test: ').strip()
+    # You'll need to provide ACTIVITY_ID in .env
+    activity_id = os.getenv('ACTIVITY_ID')
 
     if activity_id:
         result = await get_activity_power_curves(activity_id)

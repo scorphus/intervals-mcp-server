@@ -5,6 +5,7 @@ This directory contains manual test scripts that interact with the real Interval
 ## Prerequisites
 
 - Valid `.env` file with `API_KEY` and `ATHLETE_ID` in the project root
+- Optional: `ACTIVITY_ID` in `.env` for activity-specific tests
 - Active internet connection
 - Valid Intervals.icu account with data
 
@@ -38,7 +39,7 @@ python tests/real/test_power_curves_real.py
 
 ## Notes
 
-- Some tests require activity IDs as input
-- The comprehensive test script will show recent activities to help you select IDs
+- Some tests require `ACTIVITY_ID` environment variable to be set
+- Tests will skip activity-specific tests if `ACTIVITY_ID` is not provided
 - Tests may take a few seconds to complete due to API calls
 - Errors may occur if you don't have the required data types (e.g., power meter data, HR data)

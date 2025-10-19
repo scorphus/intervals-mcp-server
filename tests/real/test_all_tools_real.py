@@ -81,9 +81,9 @@ async def test_get_activity_power_curves():
     print("="*80)
 
     # Get a recent activity with power data
-    activity_id = input("Enter a cycling activity ID (or press Enter to skip): ").strip()
+    activity_id = os.getenv('ACTIVITY_ID')
     if not activity_id:
-        print("Skipped")
+        print("Skipped (ACTIVITY_ID not set)")
         return
 
     result = await get_activity_power_curves(activity_id)
@@ -126,9 +126,9 @@ async def test_get_activity_pace_curve():
     print("="*80)
 
     # Get a recent running activity
-    activity_id = input("Enter a running activity ID (or press Enter to skip): ").strip()
+    activity_id = os.getenv('ACTIVITY_ID')
     if not activity_id:
-        print("Skipped")
+        print("Skipped (ACTIVITY_ID not set)")
         return
 
     result = await get_activity_pace_curve(activity_id)
@@ -169,9 +169,9 @@ async def test_get_activity_power_vs_hr():
     print("="*80)
 
     # Get a recent activity with power and HR data
-    activity_id = input("Enter a cycling activity ID with HR (or press Enter to skip): ").strip()
+    activity_id = os.getenv('ACTIVITY_ID')
     if not activity_id:
-        print("Skipped")
+        print("Skipped (ACTIVITY_ID not set)")
         return
 
     result = await get_activity_power_vs_hr(activity_id)
@@ -191,9 +191,9 @@ async def test_get_activity_hr_curve():
     print("="*80)
 
     # Get a recent activity with HR data
-    activity_id = input("Enter an activity ID with HR (or press Enter to skip): ").strip()
+    activity_id = os.getenv('ACTIVITY_ID')
     if not activity_id:
-        print("Skipped")
+        print("Skipped (ACTIVITY_ID not set)")
         return
 
     result = await get_activity_hr_curve(activity_id)
