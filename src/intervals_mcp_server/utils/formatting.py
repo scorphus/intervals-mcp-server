@@ -10,7 +10,7 @@ from typing import Any, List
 
 class Section:
     """Context manager for conditionally adding sections to output.
-    
+
     Only adds the heading if any lines are actually written.
     Lines are only written if the value is not None.
     """

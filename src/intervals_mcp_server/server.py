@@ -729,7 +729,7 @@ async def add_or_update_event( # pylint: disable=locally-disabled, too-many-argu
         workout_type: Workout type (e.g. Ride, Run, Swim, Walk, Row)
         moving_time: Total expected moving time of the workout in seconds (optional)
         distance: Total expected distance of the workout in meters (optional)
-    
+
     Example:
         "workout_doc": {
             "description": "High-intensity workout for increasing VO2 max",
@@ -743,7 +743,7 @@ async def add_or_update_event( # pylint: disable=locally-disabled, too-many-argu
                 {"text": ""}, # Add comments or blank lines for readability
             ]
         }
-    
+
     Step properties:
         distance: Distance of step in meters
             {"distance": "5000"}
