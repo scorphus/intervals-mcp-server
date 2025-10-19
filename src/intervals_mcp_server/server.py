@@ -45,7 +45,6 @@ Usage:
 """
 
 from json import JSONDecodeError
-import base64
 import logging
 import os
 import re
