@@ -19,8 +19,7 @@ python tests/real/test_all_tools_real.py
 ```
 
 This will test:
-- `list_events` - List athlete events
-- `get_races` - Get race events
+- `list_events` - List athlete events (with optional race filtering)
 - `get_power_curves` - Get athlete power curves
 - `get_activity_power_curves` - Get power curves for a specific activity
 - `get_pace_curves` - Get athlete pace curves

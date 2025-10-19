@@ -37,11 +37,9 @@ from intervals_mcp_server.server import (  # pylint: disable=wrong-import-positi
     get_activity_power_vs_hr,
     get_current_date_and_time_info,
     get_event_by_id,
-    get_events,
     get_pace_curves,
     get_power_curves,
     get_power_hr_curve,
-    get_races,
     get_wellness_data,
     list_events,
 )
@@ -138,27 +136,6 @@ def test_get_activity_power_curves_missing_id():
 
     result = asyncio.run(get_activity_power_curves(None))
     assert result == "Error: Activity ID is required."
-
-
-def test_get_events(monkeypatch):
-    """
-    Test get_events returns a formatted string containing event details when given a sample event.
-    """
-    event = {
-        "date": "2024-01-01",
-        "id": "e1",
-        "name": "Test Event",
-        "description": "desc",
-        "race": True,
-    }
-
-    async def fake_request(*_args, **_kwargs):
-        return [event]
-
-    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
-    result = asyncio.run(get_events(athlete_id="1", start_date="2024-01-01", end_date="2024-01-02"))
-    assert "Test Event" in result
-    assert "Events:" in result
 
 
 def test_get_event_by_id(monkeypatch):
@@ -491,29 +468,6 @@ def test_list_events_with_error(monkeypatch):
     result = asyncio.run(list_events(athlete_id="1"))
     assert isinstance(result, str)
     assert "Error fetching events" in result
-
-
-def test_get_races(monkeypatch):
-    """
-    Test get_races returns formatted race event data.
-    """
-    sample_events = [
-        {
-            "id": "e1",
-            "start_date_local": "2024-06-01T00:00:00",
-            "category": "RACE_A",
-            "name": "Marathon Championship",
-            "race": True,
-        }
-    ]
-
-    async def fake_request(*_args, **_kwargs):
-        return sample_events
-
-    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
-    result = asyncio.run(get_races(athlete_id="1"))
-    assert "Marathon Championship" in result
-    assert "Races:" in result
 
 
 def test_get_power_curves(monkeypatch):

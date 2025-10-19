@@ -9,7 +9,6 @@ from intervals_mcp_server.utils.formatting import (
     format_activity_summary,
     format_workout,
     format_wellness_entry,
-    format_event_summary,
     format_event_details,
     format_intervals,
     format_athlete_data,
@@ -62,22 +61,6 @@ def test_format_wellness_entry():
     with open("tests/ressources/wellness_entry_formatted.txt", "r", encoding="utf-8") as f:
         expected_result = f.read()
     assert result == expected_result
-
-
-def test_format_event_summary():
-    """
-    Test that format_event_summary returns a string containing the event date and type.
-    """
-    event = {
-        "start_date_local": "2024-01-01",
-        "id": "e1",
-        "name": "Event1",
-        "description": "desc",
-        "race": True,
-    }
-    summary = format_event_summary(event)
-    assert "Date: 2024-01-01" in summary
-    assert "Type: Race" in summary
 
 
 def test_format_event_details():

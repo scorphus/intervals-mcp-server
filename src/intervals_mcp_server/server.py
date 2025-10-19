@@ -64,7 +64,6 @@ from intervals_mcp_server.utils.formatting import (
     format_activity_summary,
     format_athlete_data,
     format_event_details,
-    format_event_summary,
     format_intervals,
     format_wellness_entry,
 )
@@ -461,63 +460,6 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
 
 
 @mcp.tool()
-async def get_events(
-    athlete_id: str | None = None,
-    api_key: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
-) -> str:
-    """Get events for an athlete from Intervals.icu
-
-    Args:
-        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
-        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
-        start_date: Start date in YYYY-MM-DD format (optional, defaults to today)
-        end_date: End date in YYYY-MM-DD format (optional, defaults to 30 days from today)
-    """
-    # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
-    if not athlete_id_to_use:
-        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
-
-    # Parse date parameters
-    if not start_date:
-        start_date = datetime.now().strftime("%Y-%m-%d")
-    if not end_date:
-        end_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
-
-    # Call the Intervals.icu API
-    params = {"oldest": start_date, "newest": end_date}
-
-    result = await make_intervals_request(
-        url=f"/athlete/{athlete_id_to_use}/events", api_key=api_key, params=params
-    )
-
-    if isinstance(result, dict) and "error" in result:
-        error_message = result.get("message", "Unknown error")
-        return f"Error fetching events: {error_message}"
-
-    # Format the response
-    if not result:
-        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
-
-    # Ensure result is a list
-    events = result if isinstance(result, list) else []
-
-    if not events:
-        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
-
-    events_summary = "Events:\n\n"
-    for event in events:
-        if not isinstance(event, dict):
-            continue
-
-        events_summary += format_event_summary(event) + "\n\n"
-
-    return events_summary
-
-
-@mcp.tool()
 async def list_events(
     athlete_id: str | None = None,
     api_key: str | None = None,
@@ -525,6 +467,7 @@ async def list_events(
     end_date: str | None = None,
     category: str | None = None,
     limit: int = 30,
+    include_shared_events: bool = True,
 ) -> list[dict] | str:
     """Get events for an athlete from Intervals.icu
 
@@ -535,6 +478,7 @@ async def list_events(
         end_date: End date in YYYY-MM-DD format (optional, defaults to 7 days from start_date)
         category: Filter by event category (optional, e.g., "WORKOUT,RACE_A,RACE_B,RACE_C")
         limit: Maximum number of events to return (optional, defaults to 30)
+        include_shared_events: If True, fetch and include shared event data for events with shared_event_id (optional, defaults to True)
 
     Returns:
         List of event dictionaries or error message
@@ -572,7 +516,17 @@ async def list_events(
 
     # Process and format the events for better readability
     if isinstance(result, list):
-        # Return the raw list for maximum flexibility
+        # Fetch shared event data if requested
+        if include_shared_events:
+            for event in result:
+                if not isinstance(event, dict):
+                    continue
+                if shared_event_id := event.get("shared_event_id"):
+                    shared_event = await make_intervals_request(
+                        url=f"/shared-event/{shared_event_id}", api_key=api_key
+                    )
+                    if isinstance(shared_event, dict):
+                        event["shared_event"] = shared_event
         return result
 
     return "No events found or invalid response format"
@@ -1094,62 +1048,6 @@ async def download_workout_zwo(
         return f"Error downloading workout: {error_message}"
 
     return result
-
-
-@mcp.tool()
-async def get_races(athlete_id: str | None = None, api_key: str | None = None) -> str:
-    """Get events of type race for an athlete from Intervals.icu
-
-    Args:
-        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
-        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
-    """
-    # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
-    if not athlete_id_to_use:
-        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
-
-    # Set date parameters
-    start_date = datetime.now().strftime("%Y-%m-%d")
-    end_date = (datetime.now() + timedelta(days=356)).strftime("%Y-%m-%d")
-
-    # Call the Intervals.icu API
-    params = {"oldest": start_date, "newest": end_date}
-
-    result = await make_intervals_request(
-        url=f"/athlete/{athlete_id_to_use}/events", api_key=api_key, params=params
-    )
-
-    if isinstance(result, dict) and "error" in result:
-        error_message = result.get("message", "Unknown error")
-        return f"Error fetching events: {error_message}"
-
-    # Format the response
-    if not result:
-        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
-
-    # Ensure result is a list
-    events = result if isinstance(result, list) else []
-
-    if not events:
-        return f"No events found for athlete {athlete_id_to_use} in the specified date range."
-
-    races_summary = "Races:\n\n"
-    for event in events:
-        if not isinstance(event, dict) or not event.get("category", "").startswith(
-            "RACE_"
-        ):
-            continue
-
-        shared_event = None
-        if shared_event_id := event.get("shared_event_id"):
-            shared_event = await make_intervals_request(
-                url=f"/shared-event/{shared_event_id}", api_key=api_key
-            )
-            assert isinstance(shared_event, dict)
-        races_summary += format_event_summary(event, shared_event) + "\n\n\n"
-
-    return races_summary
 
 
 @mcp.tool()

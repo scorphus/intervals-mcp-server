@@ -3,7 +3,6 @@ Manual test script for all new MCP tools using real API credentials.
 
 New tools being tested:
 - list_events
-- get_races
 - get_power_curves
 - get_activity_power_curves
 - get_pace_curves
@@ -22,7 +21,6 @@ sys.path.insert(0, 'src')
 
 from intervals_mcp_server.server import (
     list_events,
-    get_races,
     get_power_curves,
     get_activity_power_curves,
     get_pace_curves,
@@ -52,16 +50,6 @@ async def test_list_events():
             print(result[0])
     else:
         print(result)
-
-
-async def test_get_races():
-    """Test get_races"""
-    print("\n" + "="*80)
-    print("Testing get_races")
-    print("="*80)
-
-    result = await get_races(athlete_id=os.getenv('ATHLETE_ID'))
-    print(f"\nResult (first 500 chars):\n{str(result)[:500]}")
 
 
 async def test_get_power_curves():
@@ -225,7 +213,6 @@ async def main():
 
     # Tests that don't need activity IDs
     await test_list_events()
-    await test_get_races()
     await test_get_power_curves()
     await test_get_pace_curves()
     await test_get_power_hr_curve()
