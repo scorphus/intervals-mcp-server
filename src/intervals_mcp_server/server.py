@@ -58,6 +58,7 @@ import json
 import httpx  # pylint: disable=import-error
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
 
+from intervals_mcp_server.utils.filtering import filter_activities, filter_activity_details
 from intervals_mcp_server.utils.types import WorkoutDoc
 
 # Try to load environment variables from .env file if it exists
@@ -347,7 +348,7 @@ async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-
     # Limit to requested count
     activities = activities[:limit]
 
-    return activities
+    return filter_activities(activities)
 
 
 @mcp.tool()
@@ -377,7 +378,7 @@ async def get_activity_details(activity_id: str, api_key: str | None = None) -> 
     if not isinstance(activity_data, dict):
         return f"Invalid activity format for activity {activity_id}."
 
-    return activity_data
+    return filter_activity_details(activity_data)
 
 
 @mcp.tool()
