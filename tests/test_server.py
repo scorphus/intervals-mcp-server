@@ -375,8 +375,6 @@ def test_download_workout_zwo(monkeypatch):
     """
     Test download_workout_zwo returns a decoded ZWO file content when given a workout event.
     """
-    import base64
-
     # Sample ZWO file content (minimal valid XML)
     sample_zwo = """<?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
@@ -384,19 +382,9 @@ def test_download_workout_zwo(monkeypatch):
     <sportType>bike</sportType>
 </workout_file>"""
 
-    # Encode the sample ZWO to base64
-    encoded_zwo = base64.b64encode(sample_zwo.encode("utf-8")).decode("utf-8")
-
-    # Mock API response with base64-encoded workout file
-    mock_response = {
-        "id": "e123",
-        "name": "Test Workout",
-        "workout_file_base64": encoded_zwo,
-        "workout_filename": "test_workout.zwo"
-    }
-
+    # Mock API response - raw XML string (raw_response=True)
     async def fake_request(*_args, **_kwargs):
-        return mock_response
+        return sample_zwo
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(download_workout_zwo(event_id="e123", athlete_id="1"))
@@ -411,10 +399,10 @@ def test_download_workout_zwo_no_workout_file(monkeypatch):
     """
     Test download_workout_zwo returns an error when the event has no workout file.
     """
-    # Mock API response without workout_file_base64
+    # Mock API error response
     mock_response = {
-        "id": "e123",
-        "name": "Test Event",
+        "error": True,
+        "message": "No workout file found for this event",
     }
 
     async def fake_request(*_args, **_kwargs):
@@ -423,7 +411,7 @@ def test_download_workout_zwo_no_workout_file(monkeypatch):
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
     result = asyncio.run(download_workout_zwo(event_id="e123", athlete_id="1"))
 
-    assert "Error:" in result
+    assert "Error downloading workout:" in result
     assert "No workout file found" in result
 
 
