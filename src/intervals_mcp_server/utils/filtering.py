@@ -1,147 +1,6 @@
 """
-Filtering utilities for cleaning API responses.
+Transformation utilities for cleaning and formatting API responses.
 """
-
-from typing import Any
-
-ACTIVITIES_BLACKLIST = {
-    "analyzed",
-    "athlete_max_hr",
-    "average_clouds",
-    "coasting_time",
-    "created",
-    "device_name",
-    "device_watts",
-    "external_id",
-    "file_sport_index",
-    "file_type",
-    "gap_model",
-    "group",
-    "has_heartrate",
-    "has_segments",
-    "has_weather",
-    "hr_load_type",
-    "icu_athlete_id",
-    "icu_cadence_z2",
-    "icu_cooldown_time",
-    "icu_distance",
-    "icu_ignore_hr",
-    "icu_ignore_power",
-    "icu_ignore_time",
-    "icu_joules_above_ftp",
-    "icu_lap_count",
-    "icu_max_wbal_depletion",
-    "icu_median_time_delta",
-    "icu_power_hr_z2",
-    "icu_power_hr_z2_mins",
-    "icu_resting_hr",
-    "icu_rolling_ftp_delta",
-    "icu_sweet_spot_max",
-    "icu_sweet_spot_min",
-    "icu_sync_date",
-    "icu_training_load_data",
-    "icu_w_prime",
-    "icu_warmup_time",
-    "icu_weight",
-    "ignore_pace",
-    "ignore_velocity",
-    "max_rain",
-    "max_snow",
-    "oauth_client_id",
-    "oauth_client_name",
-    "pace_load_type",
-    "power_field",
-    "prevailing_wind_deg",
-    "route_id",
-    "skyline_chart_bytes",
-    "source",
-    "strain_score",
-    "strava_id",
-    "sub_type",
-    "tiz_order",
-    "trainer",
-    "use_elevation_correction",
-    "use_gap_zone_times",
-}
-
-ACTIVITY_DETAILS_BLACKLIST = {
-    "average_feels_like",
-    "crank_length",
-    "gap_zone_times",
-    "icu_hr_zones",
-    "icu_power_zones",
-    "min_feels_like",
-    "max_feels_like",
-    "pace_zones",
-    "power_meter_serial",
-    "recording_stops",
-    "stream_types",
-}
-
-
-def filter_response_data(
-    data: Any, blacklist: set[str] | None = None, keep_scalars_only: bool = True
-) -> Any:
-    """
-    Filter response data by removing nulls, dicts, and optionally lists and blacklisted fields.
-
-    Args:
-        data: The data to filter (dict, list, or scalar)
-        blacklist: Set of field names to exclude
-        keep_scalars_only: If True, filter out lists. If False, keep lists but filter dicts.
-
-    Returns:
-        Filtered data
-    """
-    if blacklist is None:
-        blacklist = set()
-    if isinstance(data, list):
-        return [
-            filter_response_data(item, blacklist, keep_scalars_only) for item in data
-        ]
-    elif isinstance(data, dict):
-        result = {}
-        for k, v in data.items():
-            if k in blacklist or v is None:
-                continue
-            if isinstance(v, dict):
-                continue
-            if isinstance(v, list) and keep_scalars_only:
-                continue
-            result[k] = filter_response_data(v, blacklist, keep_scalars_only)
-        return result
-    return data
-
-
-def filter_activities(data: list[dict]) -> list[dict]:
-    """
-    Filter activities response data.
-
-    Removes noise fields, nulls, and complex types from activities data.
-
-    Args:
-        data: Activities data (list or dict)
-
-    Returns:
-        Filtered activities data
-    """
-    return filter_response_data(data, ACTIVITIES_BLACKLIST, keep_scalars_only=True)
-
-
-def filter_activity_details(data: dict) -> dict:
-    """
-    Filter activity details response data.
-
-    Removes noise fields, nulls, and dicts but keeps lists (zones, summaries).
-
-    Args:
-        data: Activity details data (dict)
-
-    Returns:
-        Filtered activity details data
-    """
-    combined_blacklist = ACTIVITIES_BLACKLIST | ACTIVITY_DETAILS_BLACKLIST
-    return filter_response_data(data, combined_blacklist, keep_scalars_only=False)
 
 
 def format_pace(pace_ms: float, pace_units: str) -> str:
@@ -227,3 +86,162 @@ def transform_athlete(data: dict) -> dict:
         if sport_data:
             result["sportSettings"].append(sport_data)
     return {k: v for k, v in result.items() if v is not None}
+
+
+def _extract_activity_data(activity: dict) -> dict:
+    """
+    Extract and format activity data.
+
+    Args:
+        activity: Raw activity data from API
+
+    Returns:
+        Cleaned and formatted activity data
+    """
+    activity_data = {
+        "id": activity.get("id"),
+        "name": activity.get("name"),
+        "type": activity.get("type"),
+        "description": activity.get("description"),
+        "start_date": activity.get("start_date"),
+        "start_date_local": activity.get("start_date_local"),
+        "distance": activity.get("distance"),
+        "moving_time": activity.get("moving_time"),
+        "elapsed_time": activity.get("elapsed_time"),
+        "coasting_time": activity.get("coasting_time"),
+        "average_speed": activity.get("average_speed"),
+        "max_speed": activity.get("max_speed"),
+        "average_heartrate": activity.get("average_heartrate"),
+        "max_heartrate": activity.get("max_heartrate"),
+        "average_cadence": activity.get("average_cadence"),
+        "avg_lr_balance": activity.get("avg_lr_balance"),
+        "average_temp": activity.get("average_temp"),
+        "min_temp": activity.get("min_temp"),
+        "max_temp": activity.get("max_temp"),
+        "total_elevation_gain": activity.get("total_elevation_gain"),
+        "total_elevation_loss": activity.get("total_elevation_loss"),
+        "calories": activity.get("calories"),
+        "commute": activity.get("commute"),
+        "race": activity.get("race"),
+        "icu_training_load": activity.get("icu_training_load"),
+        "icu_atl": activity.get("icu_atl"),
+        "icu_ctl": activity.get("icu_ctl"),
+        "icu_ftp": activity.get("icu_ftp"),
+        "icu_intensity": activity.get("icu_intensity"),
+        "icu_recording_time": activity.get("icu_recording_time"),
+        "icu_rolling_cp": activity.get("icu_rolling_cp"),
+        "icu_rolling_w_prime": activity.get("icu_rolling_w_prime"),
+        "icu_rolling_p_max": activity.get("icu_rolling_p_max"),
+        "icu_rolling_ftp": activity.get("icu_rolling_ftp"),
+        "icu_rolling_ftp_delta": activity.get("icu_rolling_ftp_delta"),
+        "icu_joules_above_ftp": activity.get("icu_joules_above_ftp"),
+        "icu_max_wbal_depletion": activity.get("icu_max_wbal_depletion"),
+        "icu_average_watts": activity.get("icu_average_watts"),
+        "icu_weighted_avg_watts": activity.get("icu_weighted_avg_watts"),
+        "icu_variability_index": activity.get("icu_variability_index"),
+        "icu_efficiency_factor": activity.get("icu_efficiency_factor"),
+        "icu_power_hr": activity.get("icu_power_hr"),
+        "icu_joules": activity.get("icu_joules"),
+        "icu_pm_cp": activity.get("icu_pm_cp"),
+        "icu_pm_w_prime": activity.get("icu_pm_w_prime"),
+        "icu_pm_p_max": activity.get("icu_pm_p_max"),
+        "icu_pm_ftp": activity.get("icu_pm_ftp"),
+        "decoupling": activity.get("decoupling"),
+        "power_load": activity.get("power_load"),
+        "pace_load": activity.get("pace_load"),
+        "icu_rpe": activity.get("icu_rpe"),
+        "lthr": activity.get("lthr"),
+        "hr_load": activity.get("hr_load"),
+        "trimp": activity.get("trimp"),
+        "strain_score": activity.get("strain_score"),
+        "icu_hrr": activity.get("icu_hrr"),
+        "average_stride": activity.get("average_stride"),
+        "perceived_exertion": activity.get("perceived_exertion"),
+        "lengths": activity.get("lengths"),
+        "pool_length": activity.get("pool_length"),
+        "kg_lifted": activity.get("kg_lifted"),
+        "carbs_ingested": activity.get("carbs_ingested"),
+        "carbs_used": activity.get("carbs_used"),
+        "feel": activity.get("feel"),
+        "session_rpe": activity.get("session_rpe"),
+        "compliance": activity.get("compliance"),
+        "polarization_index": activity.get("polarization_index"),
+        "average_altitude": activity.get("average_altitude"),
+        "max_altitude": activity.get("max_altitude"),
+        "min_altitude": activity.get("min_altitude"),
+        "average_weather_temp": activity.get("average_weather_temp"),
+        "max_weather_temp": activity.get("max_weather_temp"),
+        "min_weather_temp": activity.get("min_weather_temp"),
+        "average_feels_like": activity.get("average_feels_like"),
+        "max_feels_like": activity.get("max_feels_like"),
+        "min_feels_like": activity.get("min_feels_like"),
+        "average_wind_speed": activity.get("average_wind_speed"),
+        "average_wind_gust": activity.get("average_wind_gust"),
+        "prevailing_wind_deg": activity.get("prevailing_wind_deg"),
+        "headwind_percent": activity.get("headwind_percent"),
+        "tailwind_percent": activity.get("tailwind_percent"),
+        "average_clouds": activity.get("average_clouds"),
+        "max_rain": activity.get("max_rain"),
+        "max_snow": activity.get("max_snow"),
+        "icu_zone_times": activity.get("icu_zone_times"),
+        "icu_hr_zone_times": activity.get("icu_hr_zone_times"),
+        "pace_zone_times": activity.get("pace_zone_times"),
+        "interval_summary": activity.get("interval_summary"),
+    }
+    activity_type = activity.get("type", "")
+    if activity_type in ("Run", "VirtualRun", "TrailRun", "Walk"):
+        if (pace := activity.get("pace")) is not None:
+            activity_data["pace"] = format_pace(pace, "MINS_KM")
+        if (gap := activity.get("gap")) is not None:
+            activity_data["gap"] = format_pace(gap, "MINS_KM")
+        if (avg_speed := activity.get("average_speed")) is not None:
+            activity_data["average_speed"] = round(avg_speed * 3.6, 2)
+        if (max_speed := activity.get("max_speed")) is not None:
+            activity_data["max_speed"] = round(max_speed * 3.6, 2)
+    elif activity_type in ("Swim", "OpenWaterSwim"):
+        if (pace := activity.get("pace")) is not None:
+            activity_data["pace"] = format_pace(pace, "SECS_100M")
+    elif activity_type in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide", "EBikeRide"):
+        if (avg_speed := activity.get("average_speed")) is not None:
+            activity_data["average_speed"] = round(avg_speed * 3.6, 2)
+        if (max_speed := activity.get("max_speed")) is not None:
+            activity_data["max_speed"] = round(max_speed * 3.6, 2)
+    else:
+        activity_data["pace"] = activity.get("pace")
+        activity_data["gap"] = activity.get("gap")
+    return {k: v for k, v in activity_data.items() if v is not None}
+
+
+def transform_activities(data: list[dict]) -> list[dict]:
+    """
+    Transform activities data to clean, formatted response.
+
+    Args:
+        data: Raw activities data from API
+
+    Returns:
+        List of cleaned and formatted activities
+    """
+    result = []
+    for activity in data:
+        if not isinstance(activity, dict):
+            continue
+        activity_data = _extract_activity_data(activity)
+        if activity_data:
+            result.append(activity_data)
+    return result
+
+
+def transform_activity_details(data: dict) -> dict:
+    """
+    Transform activity details data to clean, formatted response.
+
+    Args:
+        data: Raw activity details data from API
+
+    Returns:
+        Cleaned and formatted activity details
+    """
+    if not isinstance(data, dict):
+        return {}
+    return _extract_activity_data(data)
