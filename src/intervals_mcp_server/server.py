@@ -58,7 +58,7 @@ import json
 import httpx  # pylint: disable=import-error
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
 
-from intervals_mcp_server.utils.filtering import filter_activities, filter_activity_details
+from intervals_mcp_server.utils.filtering import filter_activities, filter_activity_details, transform_athlete
 from intervals_mcp_server.utils.types import WorkoutDoc
 
 # Try to load environment variables from .env file if it exists
@@ -797,8 +797,9 @@ async def get_athlete(
     if isinstance(result, dict) and "error" in result:
         error_message = result.get("message", "Unknown error")
         return f"Error fetching athlete data: {error_message}"
-
-    return result if isinstance(result, dict) else {}
+    if not isinstance(result, dict):
+        return {}
+    return transform_athlete(result)
 
 
 @mcp.tool()

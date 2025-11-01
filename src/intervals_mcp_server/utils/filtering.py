@@ -79,7 +79,9 @@ ACTIVITY_DETAILS_BLACKLIST = {
 }
 
 
-def filter_response_data(data: Any, blacklist: set[str] | None = None, keep_scalars_only: bool = True) -> Any:
+def filter_response_data(
+    data: Any, blacklist: set[str] | None = None, keep_scalars_only: bool = True
+) -> Any:
     """
     Filter response data by removing nulls, dicts, and optionally lists and blacklisted fields.
 
@@ -94,7 +96,9 @@ def filter_response_data(data: Any, blacklist: set[str] | None = None, keep_scal
     if blacklist is None:
         blacklist = set()
     if isinstance(data, list):
-        return [filter_response_data(item, blacklist, keep_scalars_only) for item in data]
+        return [
+            filter_response_data(item, blacklist, keep_scalars_only) for item in data
+        ]
     elif isinstance(data, dict):
         result = {}
         for k, v in data.items():
@@ -138,3 +142,88 @@ def filter_activity_details(data: dict) -> dict:
     """
     combined_blacklist = ACTIVITIES_BLACKLIST | ACTIVITY_DETAILS_BLACKLIST
     return filter_response_data(data, combined_blacklist, keep_scalars_only=False)
+
+
+def format_pace(pace_ms: float, pace_units: str) -> str:
+    """
+    Format pace from m/s to human-readable format.
+
+    Args:
+        pace_ms: Pace in meters per second
+        pace_units: Pace units (MINS_KM, MINS_MILE, SECS_100M, etc.)
+
+    Returns:
+        Formatted pace string (e.g., "5:15" for min/km)
+    """
+    if pace_units == "MINS_KM":
+        kmh = pace_ms * 3.6
+        min_per_km = 60 / kmh
+        minutes = int(min_per_km)
+        seconds = round((min_per_km - minutes) * 60)
+        return f"{minutes}:{seconds:02d}"
+    if pace_units == "SECS_100M":
+        secs_per_100m = 100 / pace_ms
+        minutes = int(secs_per_100m // 60)
+        seconds = round(secs_per_100m % 60)
+        if minutes > 0:
+            return f"{minutes}:{seconds:02d}"
+        return f"{seconds}"
+    return str(pace_ms)
+
+
+def transform_athlete(data: dict) -> dict:
+    """
+    Transform athlete data to clean, formatted response.
+
+    Args:
+        data: Raw athlete data from API
+
+    Returns:
+        Cleaned and formatted athlete data
+    """
+    result = {
+        "id": data.get("id"),
+        "name": data.get("name"),
+        "firstname": data.get("firstname"),
+        "lastname": data.get("lastname"),
+        "sex": data.get("sex"),
+        "city": data.get("city"),
+        "state": data.get("state"),
+        "country": data.get("country"),
+        "timezone": data.get("timezone"),
+        "icu_last_seen": data.get("icu_last_seen"),
+        "status": data.get("status"),
+        "icu_resting_hr": data.get("icu_resting_hr"),
+        "icu_weight": data.get("icu_weight"),
+        "icu_weight_sync": data.get("icu_weight_sync"),
+        "bio": data.get("bio"),
+        "website": data.get("website"),
+        "icu_date_of_birth": data.get("icu_date_of_birth"),
+        "height": data.get("height"),
+        "height_units": data.get("height_units"),
+        "sportSettings": [],
+    }
+    for sport in data.get("sportSettings", []):
+        if not isinstance(sport, dict):
+            continue
+        sport_data = {
+            "types": sport.get("types"),
+            "ftp": sport.get("ftp"),
+            "indoor_ftp": sport.get("indoor_ftp"),
+            "lthr": sport.get("lthr"),
+            "max_hr": sport.get("max_hr"),
+        }
+        if (pace := sport.get("threshold_pace")) is not None:
+            pace_units = sport.get("pace_units", "MINS_KM")
+            sport_data["threshold_pace"] = format_pace(pace, pace_units)
+            sport_data["threshold_pace_units"] = pace_units
+        sport_data["power_zones"] = sport.get("power_zones")
+        sport_data["power_zone_names"] = sport.get("power_zone_names")
+        sport_data["hr_zones"] = sport.get("hr_zones")
+        sport_data["hr_zone_names"] = sport.get("hr_zone_names")
+        sport_data["pace_zones"] = sport.get("pace_zones")
+        sport_data["pace_zone_names"] = sport.get("pace_zone_names")
+        sport_data = {k: v for k, v in sport_data.items() if v is not None}
+        if sport_data:
+            result["sportSettings"].append(sport_data)
+    return {k: v for k, v in result.items() if v is not None}
