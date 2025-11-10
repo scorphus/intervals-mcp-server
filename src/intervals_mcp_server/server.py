@@ -58,7 +58,12 @@ import json
 import httpx  # pylint: disable=import-error
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
 
-from intervals_mcp_server.utils.filtering import transform_activities, transform_activity_details, transform_athlete
+from intervals_mcp_server.utils.filtering import (
+    transform_activities,
+    transform_activity_details,
+    transform_activity_intervals,
+    transform_athlete,
+)
 from intervals_mcp_server.utils.types import WorkoutDoc
 
 # Try to load environment variables from .env file if it exists
@@ -395,6 +400,11 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
     Returns:
         Dictionary containing interval data or error message
     """
+    # Get activity details to determine activity type for proper formatting
+    activity_details = await get_activity_details(activity_id, api_key)
+    if isinstance(activity_details, str):
+        return activity_details
+    activity_type = activity_details.get("type", "")
     # Call the Intervals.icu API
     result = await make_intervals_request(url=f"/activity/{activity_id}/intervals", api_key=api_key)
 
@@ -412,7 +422,7 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
     ):
         return f"No interval data or unrecognized format for activity {activity_id}."
 
-    return result
+    return transform_activity_intervals(result, activity_type)
 
 
 @mcp.tool()

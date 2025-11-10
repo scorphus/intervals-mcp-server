@@ -245,3 +245,136 @@ def transform_activity_details(data: dict) -> dict:
     if not isinstance(data, dict):
         return {}
     return _extract_activity_data(data)
+
+
+def _extract_interval_data(interval: dict, activity_type: str) -> dict:
+    """
+    Extract and format interval data.
+
+    Args:
+        interval: Raw interval data from API
+        activity_type: Activity type (Run, Ride, Swim, etc.)
+
+    Returns:
+        Cleaned and formatted interval data
+    """
+    interval_data = {
+        "id": interval.get("id"),
+        "type": interval.get("type"),
+        "start_index": interval.get("start_index"),
+        "end_index": interval.get("end_index"),
+        "start_time": interval.get("start_time"),
+        "end_time": interval.get("end_time"),
+        "label": interval.get("label"),
+        "distance": interval.get("distance"),
+        "moving_time": interval.get("moving_time"),
+        "elapsed_time": interval.get("elapsed_time"),
+        "average_watts": interval.get("average_watts"),
+        "average_watts_alt": interval.get("average_watts_alt"),
+        "average_watts_alt_acc": interval.get("average_watts_alt_acc"),
+        "min_watts": interval.get("min_watts"),
+        "max_watts": interval.get("max_watts"),
+        "average_watts_kg": interval.get("average_watts_kg"),
+        "max_watts_kg": interval.get("max_watts_kg"),
+        "intensity": interval.get("intensity"),
+        "weighted_average_watts": interval.get("weighted_average_watts"),
+        "w5s_variability": interval.get("w5s_variability"),
+        "training_load": interval.get("training_load"),
+        "joules": interval.get("joules"),
+        "joules_above_ftp": interval.get("joules_above_ftp"),
+        "wbal_start": interval.get("wbal_start"),
+        "wbal_end": interval.get("wbal_end"),
+        "decoupling": interval.get("decoupling"),
+        "zone": interval.get("zone"),
+        "zone_min_watts": interval.get("zone_min_watts"),
+        "zone_max_watts": interval.get("zone_max_watts"),
+        "average_heartrate": interval.get("average_heartrate"),
+        "min_heartrate": interval.get("min_heartrate"),
+        "max_heartrate": interval.get("max_heartrate"),
+        "average_cadence": interval.get("average_cadence"),
+        "min_cadence": interval.get("min_cadence"),
+        "max_cadence": interval.get("max_cadence"),
+        "average_stride": interval.get("average_stride"),
+        "average_torque": interval.get("average_torque"),
+        "min_torque": interval.get("min_torque"),
+        "max_torque": interval.get("max_torque"),
+        "total_elevation_gain": interval.get("total_elevation_gain"),
+        "min_altitude": interval.get("min_altitude"),
+        "max_altitude": interval.get("max_altitude"),
+        "average_gradient": interval.get("average_gradient"),
+        "average_temp": interval.get("average_temp"),
+        "average_weather_temp": interval.get("average_weather_temp"),
+        "average_feels_like": interval.get("average_feels_like"),
+        "average_wind_speed": interval.get("average_wind_speed"),
+        "average_wind_gust": interval.get("average_wind_gust"),
+        "prevailing_wind_deg": interval.get("prevailing_wind_deg"),
+        "headwind_percent": interval.get("headwind_percent"),
+        "tailwind_percent": interval.get("tailwind_percent"),
+        "strain_score": interval.get("strain_score"),
+        "ss_p_max": interval.get("ss_p_max"),
+        "ss_w_prime": interval.get("ss_w_prime"),
+        "ss_cp": interval.get("ss_cp"),
+        "avg_lr_balance": interval.get("avg_lr_balance"),
+        "group_id": interval.get("group_id"),
+        "segment_effort_ids": interval.get("segment_effort_ids"),
+        "count": interval.get("count"),
+    }
+    if activity_type in ("Run", "VirtualRun", "TrailRun", "Walk"):
+        if (gap := interval.get("gap")) is not None:
+            interval_data["gap"] = format_pace(gap, "MINS_KM")
+        if (avg_speed := interval.get("average_speed")) is not None:
+            interval_data["average_speed"] = round(avg_speed * 3.6, 2)
+        if (min_speed := interval.get("min_speed")) is not None:
+            interval_data["min_speed"] = round(min_speed * 3.6, 2)
+        if (max_speed := interval.get("max_speed")) is not None:
+            interval_data["max_speed"] = round(max_speed * 3.6, 2)
+    elif activity_type in ("Swim", "OpenWaterSwim"):
+        if (avg_speed := interval.get("average_speed")) is not None:
+            interval_data["pace"] = format_pace(avg_speed, "SECS_100M")
+    elif activity_type in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide", "EBikeRide"):
+        if (avg_speed := interval.get("average_speed")) is not None:
+            interval_data["average_speed"] = round(avg_speed * 3.6, 2)
+        if (min_speed := interval.get("min_speed")) is not None:
+            interval_data["min_speed"] = round(min_speed * 3.6, 2)
+        if (max_speed := interval.get("max_speed")) is not None:
+            interval_data["max_speed"] = round(max_speed * 3.6, 2)
+    else:
+        interval_data["average_speed"] = interval.get("average_speed")
+        interval_data["min_speed"] = interval.get("min_speed")
+        interval_data["max_speed"] = interval.get("max_speed")
+        interval_data["gap"] = interval.get("gap")
+    return {k: v for k, v in interval_data.items() if v is not None}
+
+
+def transform_activity_intervals(data: dict, activity_type: str) -> dict:
+    """
+    Transform activity intervals data to clean, formatted response.
+
+    Args:
+        data: Raw intervals data from API
+        activity_type: Activity type (Run, Ride, Swim, etc.)
+
+    Returns:
+        Cleaned and formatted intervals data
+    """
+    if not isinstance(data, dict):
+        return {}
+    result = {
+        "id": data.get("id"),
+        "analyzed": data.get("analyzed"),
+        "icu_intervals": [],
+        "icu_groups": [],
+    }
+    for interval in data.get("icu_intervals", []):
+        if not isinstance(interval, dict):
+            continue
+        interval_data = _extract_interval_data(interval, activity_type)
+        if interval_data:
+            result["icu_intervals"].append(interval_data)
+    for group in data.get("icu_groups", []):
+        if not isinstance(group, dict):
+            continue
+        group_data = _extract_interval_data(group, activity_type)
+        if group_data:
+            result["icu_groups"].append(group_data)
+    return {k: v for k, v in result.items() if v is not None}
