@@ -82,22 +82,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger("intervals_icu_mcp_server")
 
-# Create a single AsyncClient instance for all requests
-httpx_client = httpx.AsyncClient()
+# Shared httpx client, lazily (re)created if closed
+httpx_client: httpx.AsyncClient | None = None
+
+
+def _get_httpx_client() -> httpx.AsyncClient:
+    global httpx_client  # noqa: PLW0603
+    if httpx_client is None or httpx_client.is_closed:
+        httpx_client = httpx.AsyncClient()
+    return httpx_client
 
 
 @asynccontextmanager
 async def lifespan(_app: FastMCP):
-    """
-    Context manager to ensure the shared httpx client is closed when the server stops.
-
-    Args:
-        _app (FastMCP): The MCP server application instance.
-    """
+    """Context manager to close the shared httpx client when the server stops."""
     try:
         yield
     finally:
-        await httpx_client.aclose()
+        if httpx_client and not httpx_client.is_closed:
+            await httpx_client.aclose()
 
 
 # Initialize FastMCP server with custom lifespan
@@ -110,7 +113,7 @@ ATHLETE_ID = os.getenv("ATHLETE_ID", "")  # Default athlete ID from .env
 USER_AGENT = "intervalsicu-mcp-server/1.0"
 
 # Accept athlete IDs that are either all digits or start with 'i' followed by digits
-if not re.fullmatch(r"i?\d+", ATHLETE_ID):
+if ATHLETE_ID and not re.fullmatch(r"i?\d+", ATHLETE_ID):
     raise ValueError(
         "ATHLETE_ID must be all digits (e.g. 123456) or start with 'i' followed by digits (e.g. i123456)"
     )
@@ -184,7 +187,7 @@ async def make_intervals_request(
     full_url = f"{INTERVALS_API_BASE_URL}{url}"
 
     try:
-        response = await httpx_client.request(
+        response = await _get_httpx_client().request(
             method=method,
             url=full_url,
             headers=headers,
