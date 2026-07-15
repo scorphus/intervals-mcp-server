@@ -64,7 +64,6 @@ from intervals_mcp_server.utils.filtering import (
     transform_activity_intervals,
     transform_athlete,
 )
-from intervals_mcp_server.utils.types import WorkoutDoc
 
 # Try to load environment variables from .env file if it exists
 try:
@@ -668,76 +667,145 @@ async def delete_events_by_date_range(
 async def add_or_update_event( # pylint: disable=locally-disabled, too-many-arguments, too-many-positional-arguments
     workout_type: str,
     name: str,
+    description: str | None = None,
     athlete_id: str | None = None,
     api_key: str | None = None,
     event_id: str | None = None,
     start_date: str | None = None,
-    workout_doc: WorkoutDoc | None = None,
     moving_time: int | None = None,
     distance: int | None = None,
 ) -> str:
-    """Post event for an athlete to Intervals.icu this follows the event api from intervals.icu
+    """Post event for an athlete to Intervals.icu.
     If event_id is provided, the event will be updated instead of created.
 
     Args:
+        workout_type: Workout type (Ride, Run, Swim, Walk, Row, VirtualRide, VirtualRun)
+        name: Name of the workout
+        description: Workout steps in Intervals.icu native text format (see format guide and examples below)
         athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
-        event_id: The Intervals.icu event ID (optional, will use event_id from .env if not provided)
+        event_id: The Intervals.icu event ID (optional, for updates)
         start_date: Start date in YYYY-MM-DD format (optional, defaults to today)
-        name: Name of the activity
-        workout_doc: steps as a list of Step objects (optional, but necessary to define workout steps)
-        workout_type: Workout type (e.g. Ride, Run, Swim, Walk, Row)
         moving_time: Total expected moving time of the workout in seconds (optional)
         distance: Total expected distance of the workout in meters (optional)
 
-    Example:
-        "workout_doc": {
-            "description": "High-intensity workout for increasing VO2 max",
-            "steps": [
-                {"power": {"value": "80", "units": "%ftp"}, "duration": "900", "warmup": true},
-                {"reps": 2, "text": "High-intensity intervals", "steps": [
-                    {"power": {"value": "110", "units": "%ftp"}, "distance": "500", "text": "High-intensity"},
-                    {"power": {"value": "80", "units": "%ftp"}, "duration": "90", "text": "Recovery"}
-                ]},
-                {"power": {"value": "80", "units": "%ftp"}, "duration": "600", "cooldown": true}
-                {"text": ""}, # Add comments or blank lines for readability
-            ]
-        }
+    Description Format Guide:
+        Each step is a line starting with a dash (-) followed by duration/distance, intensity, and label.
+        Non-step lines (without a dash) are treated as comments/section headers.
 
-    Step properties:
-        distance: Distance of step in meters
-            {"distance": "5000"}
-        duration: Duration of step in seconds
-            {"duration": "1800"}
-        power/hr/pace/cadence: Define step intensity
-            Percentage of FTP: {"power": {"value": "80", "units": "%ftp"}}
-            Absolute power: {"power": {"value": "200", "units": "w"}}
-            Heart rate: {"hr": {"value": "75", "units": "%hr"}}
-            Heart rate (LTHR): {"hr": {"value": "85", "units": "%lthr"}}
-            Cadence: {"cadence": {"value": "90", "units": "rpm"}}
-            Pace by ftp: {"pace": {"value": "80", "units": "%pace"}}
-            Pace by zone: {"pace": {"value": "Z2", "units": "pace_zone"}}
-            Zone by power: {"power": {"value": "Z2", "units": "power_zone"}}
-            Zone by heart rate: {"hr": {"value": "Z2", "units": "hr_zone"}}
-        Ranges: Specify ranges for power, heart rate, or cadence:
-            {"power": {"start": "80", "end": "90", "units": "%ftp"}}
-        Ramps: Instead of a range, indicate a gradual change in intensity (useful for ERG workouts):
-            {"ramp": True, "power": {"start": "80", "end": "90", "units": "%ftp"}}
-        Repeats: include the reps property and add nested steps
-            {"reps": 3,
-            "steps": [
-                {"power": {"value": "110", "units": "%ftp"}, "distance": "500", "text": "High-intensity"},
-                {"power": {"value": "80", "units": "%ftp"}, "duration": "90", "text": "Recovery"}
-            ]}
-        Free Ride: Include free to indicate a segment without ERG control, optionally with a suggested power range:
-            {"free": true, "power": {"value": "80", "units": "%ftp"}}
-        Comments and Labels: Add descriptive text to label steps:
-            {"text": "Warmup"}
+        Duration: s=seconds, m=minutes, h=hours (combinable: 1h30m10s)
+            30s, 5m, 1h, 1h30m, 4m50s
+        Distance: mtr=meters, km=kilometers
+            100mtr, 200mtr, 1km, 1.2km, 0.4km
+        Power intensity (cycling): percentage of FTP, absolute watts, or zone
+            80%, 110%, 50-75%, 200w, 100-140w, Z2, Z4
+        Pace intensity (running/swimming): percentage of threshold pace or zone
+            80% Pace, 92% Pace, Z2 Pace
+        Heart rate: percentage of max HR or LTHR
+            75% HR, 85% LTHR, Z2 HR
+        Ramps: gradual intensity change
+            ramp 50-75%, ramp 80-90% Pace
+        Repeats: Nx on its own line, followed by the steps to repeat.
+            IMPORTANT: blank line before and after the repeated section.
+        Rest: use 0% Pace for swimming wall rest, or duration-only lines
+            10s 0% Pace Rest, 30s Rest, 15s intensity=rest Rest
 
-    How to use steps:
-        - Set distance or duration as appropriate for step
-        - Use "reps" with nested steps to define repeat intervals (as in example above)
-        - Define one of "power", "hr" or "pace" to define step intensity
+    Example - Cycling Intervals:
+        - 5m ramp 50-75%
+        - 5m 75%
+
+        5x
+        - 5m 85%
+        - 5m 65%
+
+        - 5m 75%
+        - 5m ramp 75-50%
+
+    Example - Cycling Threshold:
+        - 20m ramp 50-75%
+
+        5x
+        - 8m 100%
+        - 4m 40%
+
+        - 16m 65%
+
+    Example - Cycling Endurance:
+        - 10m ramp 50-72%
+        - 90m 72%
+        - 10m ramp 72-50%
+
+    Example - Running Endurance:
+        - 5m 76% Pace Warmup
+        - 50m 87% Pace Steady
+        - 5m 76% Pace Cooldown
+
+    Example - Running VO2max Intervals:
+        - 2km 75% Pace Warm-up
+
+        5x
+        - 1km 106% Pace VO2max effort
+        - 500mtr 60% Pace Recovery jog
+
+        - 2km 75% Pace Cool down
+
+    Example - Running with Strides:
+        - 10m 75% Pace Easy warm-up
+        - 35m 82% Pace Steady Z2
+
+        6x
+        - 20s 105% Pace Stride
+        - 40s 72% Pace Recovery
+
+        - 5m 75% Pace Cool-down
+
+    Example - Swimming Endurance:
+        - 0.2km 75% Pace Warmup Freestyle
+        - 1.5km 82% Pace Main Set Freestyle
+        - 0.2km 75% Pace Cooldown Freestyle
+
+    Example - Swimming Intervals with Rest:
+        8x
+        - 50mtr 77% Pace
+        - 10s 0% Pace Rest
+
+        - 1300mtr 87% Pace
+
+        4x
+        - 50mtr 77% Pace
+        - 10s 0% Pace Rest
+
+    Example - Swimming Technique Session:
+        ## Warmup
+        - 400mtr 74% Pace Easy
+
+        8x
+        - 50mtr 82% Pace Choice drill
+        - 15s intensity=rest Rest
+
+        ## Technique Focus
+        5x
+        - 100mtr 87% Pace Smooth swim
+        - 20s intensity=rest Rest
+
+        ## Cool Down
+        - 200mtr 74% Pace Easy choice
+
+    Example - Swimming Ladder:
+        - 200mtr 70% Pace Warmup
+
+        1x
+        - 400mtr 82% Pace
+        - 30s Rest
+        - 800mtr 82% Pace
+        - 45s Rest
+        - 1.2km 82% Pace
+        - 1m Rest
+        - 800mtr 82% Pace
+        - 45s Rest
+        - 400mtr 82% Pace
+
+        - 200mtr 65% Pace Cooldown
     """
     message = None
     if not athlete_id:
@@ -752,7 +820,7 @@ async def add_or_update_event( # pylint: disable=locally-disabled, too-many-argu
                 "start_date_local": start_date + "T00:00:00",
                 "category": "WORKOUT",
                 "name": name,
-                "description": str(workout_doc) if workout_doc else None,
+                "description": description,
                 "type": _resolve_workout_type(name, workout_type),
                 "moving_time": moving_time,
                 "distance": distance,
