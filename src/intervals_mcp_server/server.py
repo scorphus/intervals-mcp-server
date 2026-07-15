@@ -428,6 +428,56 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
 
 
 @mcp.tool()
+async def get_activity_messages(activity_id: str, api_key: str | None = None) -> list | str:
+    """Get messages (notes/comments) for a specific activity from Intervals.icu.
+
+    Args:
+        activity_id: The Intervals.icu activity ID
+        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+    """
+    result = await make_intervals_request(
+        url=f"/activity/{activity_id}/messages", api_key=api_key
+    )
+
+    if isinstance(result, dict) and "error" in result:
+        return f"Error fetching activity messages: {result.get('message')}"
+
+    if not result or not isinstance(result, list):
+        return f"No messages found for activity {activity_id}."
+
+    return result
+
+
+@mcp.tool()
+async def add_activity_message(
+    activity_id: str,
+    content: str,
+    api_key: str | None = None,
+) -> dict | str:
+    """Add a message (note/comment) to an activity on Intervals.icu.
+
+    Args:
+        activity_id: The Intervals.icu activity ID
+        content: The message text to add
+        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+    """
+    result = await make_intervals_request(
+        url=f"/activity/{activity_id}/messages",
+        api_key=api_key,
+        method="POST",
+        data={"content": content},
+    )
+
+    if isinstance(result, dict) and "error" in result:
+        return f"Error adding message to activity: {result.get('message')}"
+
+    if not result or not isinstance(result, dict):
+        return "Error: unexpected response when adding message."
+
+    return result
+
+
+@mcp.tool()
 async def list_events(
     athlete_id: str | None = None,
     api_key: str | None = None,
@@ -847,6 +897,60 @@ async def add_or_update_event( # pylint: disable=locally-disabled, too-many-argu
         except ValueError as e:
             message = f"Error: {e}"
     return message
+
+
+@mcp.tool()
+async def add_or_update_note(
+    name: str,
+    description: str,
+    start_date: str | None = None,
+    color: str | None = "green",
+    athlete_id: str | None = None,
+    api_key: str | None = None,
+    event_id: str | None = None,
+) -> str:
+    """Add or update a plain text note (category NOTE) on the Intervals.icu calendar.
+
+    Args:
+        name: Title of the note
+        description: Plain text content of the note
+        start_date: Date in YYYY-MM-DD format (optional, defaults to today)
+        color: Color of the note (e.g. green, orange, red, blue)
+        athlete_id: The Intervals.icu athlete ID (optional)
+        api_key: The Intervals.icu API key (optional)
+        event_id: The Intervals.icu event ID (optional, for updates)
+    """
+    if not athlete_id:
+        athlete_id = ATHLETE_ID
+    if not athlete_id:
+        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
+
+    if not start_date:
+        start_date = datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        validated_date = validate_date(start_date)
+        data = {
+            "category": "NOTE",
+            "name": name,
+            "description": description,
+            "start_date_local": validated_date + "T00:00:00",
+            "color": color,
+        }
+        url = f"/athlete/{athlete_id}/events"
+        if event_id:
+            url += f"/{event_id}"
+        result = await make_intervals_request(
+            url=url, api_key=api_key, data=data, method="PUT" if event_id else "POST"
+        )
+        action = "updated" if event_id else "created"
+        if isinstance(result, dict) and "error" in result:
+            return f"Error {action} note: {result.get('message', 'Unknown error')}"
+        if isinstance(result, dict):
+            return f"Successfully {action} note: {json.dumps(result, indent=2)}"
+        return f"Note {action} successfully at {validated_date}"
+    except ValueError as e:
+        return f"Error: {e}"
 
 
 @mcp.tool()
@@ -1335,6 +1439,34 @@ async def get_activity_hr_curve(
         return f"Error fetching activity HR curve: {result.get('message')}"
 
     return result if isinstance(result, dict) else {}
+
+
+@mcp.tool()
+async def get_gear_list(
+    athlete_id: str | None = None,
+    api_key: str | None = None,
+) -> list | str:
+    """Get the gear catalog (bikes, shoes, etc.) for an athlete from Intervals.icu.
+
+    Args:
+        athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
+        api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+    """
+    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    if not athlete_id_to_use:
+        return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
+
+    result = await make_intervals_request(
+        url=f"/athlete/{athlete_id_to_use}/gear", api_key=api_key
+    )
+
+    if isinstance(result, dict) and "error" in result:
+        return f"Error fetching gear: {result.get('message')}"
+
+    if not result or not isinstance(result, list):
+        return f"No gear found for athlete {athlete_id_to_use}."
+
+    return result
 
 
 # Run the server
