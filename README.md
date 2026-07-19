@@ -1,189 +1,124 @@
 # Intervals.icu MCP Server
 
-Model Context Protocol (MCP) server for connecting Claude with the Intervals.icu API. It provides tools for authentication and data retrieval for activities, events, and wellness data.
+[Model Context Protocol](https://modelcontextprotocol.io/) server for connecting Claude with the [Intervals.icu](https://intervals.icu) API. Analyze your training data, manage events and workouts, and track wellness — all through natural conversation.
 
-## Requirements
+## Quick Start (Hosted)
 
-- Python 3.12 or higher
-- [Model Context Protocol (MCP) Python SDK](https://github.com/modelcontextprotocol/python-sdk)
-- httpx
-- python-dotenv
+The easiest way to use this server is via the hosted instance — no installation required.
 
-## Setup
+1. Open the Claude app (mobile or desktop)
+2. Go to **Settings > Connectors > Add Connector**
+3. Enter the URL: `https://intervals-better-mcp.vercel.app/mcp`
+4. Follow the OAuth flow to enter your Intervals.icu **Athlete ID** and **API Key**
 
-### 1. Install uv (recommended)
+That's it. Ask Claude about your training data.
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+### Finding your credentials
 
-### 2. Clone this repository
+- **Athlete ID**: visible in the URL when logged into Intervals.icu — `https://intervals.icu/athlete/i12345/...` where `i12345` is your ID
+- **API Key**: go to [intervals.icu/settings](https://intervals.icu/settings), scroll to **Developer Settings**
+
+## Local Setup
+
+If you prefer to run the server locally (e.g., for development or privacy):
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/scorphus/intervals-mcp-server.git
 cd intervals-mcp-server
-```
-
-### 3. Create and activate a virtual environment
-
-```bash
-# Create virtual environment with Python 3.12
-uv venv --python 3.12
-
-# Activate virtual environment
-# On macOS/Linux:
-source .venv/bin/activate
-# On Windows:
-.venv\Scripts\activate
-```
-
-### 4. Sync project dependencies
-
-```bash
 uv sync
 ```
 
-### 5. Set up environment variables
-
-Make a copy of `.env.example` and name it `.env` by running the following command:
+### 2. Configure credentials
 
 ```bash
 cp .env.example .env
 ```
 
-Then edit the `.env` file and set your Intervals.icu athlete id and API key:
+Edit `.env` with your Intervals.icu credentials:
 
 ```
-API_KEY=your_intervals_api_key_here
-ATHLETE_ID=your_athlete_id_here
+API_KEY=your_api_key_here
+ATHLETE_ID=i12345
 ```
 
-#### Getting your Intervals.icu API Key
+### 3. Add to Claude Desktop
 
-1. Log in to your Intervals.icu account
-2. Go to Settings > API
-3. Generate a new API key
-
-#### Finding your Athlete ID
-
-Your athlete ID is typically visible in the URL when you're logged into Intervals.icu. It looks like:
-- `https://intervals.icu/athlete/i12345/...` where `i12345` is your athlete ID
-
-## Updating
-
-This project is actively developed, with new features and fixes added regularly. To stay up to date, follow these steps:
-
-### 1. Pull the latest changes from `main`
-
-> ⚠️ Make sure you don’t have uncommitted changes before running this command.
-
-```bash
-git checkout main && git pull
-```
-
-### 2. Update Python dependencies
-
-Activate your virtual environment and sync dependencies:
-
-```bash
-source .venv/bin/activate
-uv sync
-```
-
-### Troubleshooting
-
-If Claude Desktop fails due to configuration changes, follow these steps:
-
-1. Delete the existing entry in claude_desktop_config.json.
-2. Reconfigure Claude Desktop from the intervals_mcp_server directory:
-
-```bash
-mcp install src/intervals_mcp_server/server.py --name "Intervals.icu" --with-editable . --env-file .env
-```
-
-## Usage
-
-### 1. Configure Claude Desktop
-
-To use this server with Claude Desktop, you need to add it to your Claude Desktop configuration.
-
-1. Run the following from the `intervals_mcp_server` directory to configure Claude Desktop:
-
-```bash
-mcp install src/intervals_mcp_server/server.py --name "Intervals.icu" --with-editable . --env-file .env
-```
-
-2. If you open your Claude Desktop App configuration file `claude_desktop_config.json`, it should look like this:
+Add the following to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "Intervals.icu": {
-      "command": "/Users/<USERNAME>/.cargo/bin/uv",
+      "command": "uv",
       "args": [
         "run",
-        "--with",
-        "mcp[cli]",
-        "--with-editable",
-        "/path/to/intervals-mcp-server",
-        "mcp",
-        "run",
+        "--with", "mcp[cli]",
+        "--with-editable", "/path/to/intervals-mcp-server",
+        "mcp", "run",
         "/path/to/intervals-mcp-server/src/intervals_mcp_server/server.py"
       ],
       "env": {
-        "INTERVALS_API_BASE_URL": "https://intervals.icu/api/v1",
-        "ATHLETE_ID": "<YOUR_ATHLETE_ID>",
-        "API_KEY": "<YOUR_API_KEY>",
-        "LOG_LEVEL": "INFO"
+        "ATHLETE_ID": "i12345",
+        "API_KEY": "your_api_key_here"
       }
     }
   }
 }
 ```
 
-Where `/path/to/` is the path to the `intervals-mcp-server` code folder in your system.
+Replace `/path/to/intervals-mcp-server` with the actual path on your system.
 
-If you observe the following error messages when you open Claude Desktop, include the full path to `uv` in the command key in the `claude_desktop_config.json` configuration file. You can get the full path by running `which uv` in the terminal.
+## Available Tools
 
-```
-2025-04-28T10:21:11.462Z [info] [Intervals.icu MCP Server] Initializing server...
-2025-04-28T10:21:11.477Z [error] [Intervals.icu MCP Server] spawn uv ENOENT
-2025-04-28T10:21:11.477Z [error] [Intervals.icu MCP Server] spawn uv ENOENT
-2025-04-28T10:21:11.481Z [info] [Intervals.icu MCP Server] Server transport closed
-2025-04-28T10:21:11.481Z [info] [Intervals.icu MCP Server] Client transport closed
-```
+### Activities
+- `get_activities` — list activities in a date range
+- `get_activity_details` — detailed info for a specific activity
+- `get_activity_intervals` — interval/lap data with formatted paces and power
+- `get_activity_messages` — comments and notes on an activity
+- `add_activity_message` — add a comment to an activity
 
-3. Restart Claude Desktop.
+### Events & Workouts
+- `list_events` — list calendar events in a date range
+- `get_event_by_id` — detailed event info
+- `add_or_update_event` — create or update events and workouts
+- `delete_event` — delete a single event
+- `delete_events_by_date_range` — bulk delete events
+- `download_workout_zwo` — export a workout as a ZWO file
 
-### 2. Use the MCP server with Claude
+### Performance Analysis
+- `get_power_curves` — athlete power curve over a date range
+- `get_activity_power_curves` — power curve for a single activity
+- `get_pace_curves` — athlete pace curve over a date range
+- `get_activity_pace_curve` — pace curve for a single activity
+- `get_power_hr_curve` — power vs heart rate relationship
+- `get_activity_power_vs_hr` — power vs HR for a single activity
+- `get_activity_hr_curve` — heart rate curve for a single activity
 
-Once the server is running and Claude Desktop is configured, you can use the following tools to ask questions about your past and future activities, events, and wellness data.
+### Athlete & Wellness
+- `get_athlete` — athlete profile and settings
+- `get_wellness_data` — daily wellness metrics (weight, HRV, sleep, mood, etc.)
+- `get_gear_list` — bikes, shoes, and other equipment
 
-- `get_activities`: Retrieve a list of activities
-- `get_activity_details`: Get detailed information for a specific activity
-- `get_activity_intervals`: Get detailed interval data for a specific activity
-- `get_wellness_data`: Fetch wellness data
-- `get_events`: Retrieve upcoming events (workouts, races, etc.)
-- `get_event_by_id`: Get detailed information for a specific event
+### Notes & Utilities
+- `add_or_update_note` — create or update a note
+- `get_current_date_and_time_info` — current date/time with training context
+- `calculate_date_info` — date arithmetic and week boundaries
 
-## Development and testing
-
-Install development dependencies and run the test suite with:
+## Development
 
 ```bash
 uv sync --all-extras
 pytest -v tests
 ```
 
-### Running the server locally
-
-To start the server manually (useful when developing or testing), run:
+To run the server locally in HTTP mode (for testing OAuth and multi-user):
 
 ```bash
-mcp run src/intervals_mcp_server/server.py
+MCP_TRANSPORT=streamable-http MCP_ISSUER_URL=http://localhost:8000 python -m intervals_mcp_server.server
 ```
 
 ## License
 
-The GNU General Public License v3.0
-
+[GNU General Public License v3.0](LICENSE)
