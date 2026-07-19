@@ -303,8 +303,8 @@ AUTH_PAGE_HTML = """\
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f5f5f5; display: flex; justify-content: center; align-items: center;
-    min-height: 100vh; padding: 1rem;
+    background: #f5f5f5; color: #333; display: flex; justify-content: center;
+    align-items: center; min-height: 100vh; padding: 1rem;
   }
   .card {
     background: #fff; border-radius: 12px; padding: 2rem; max-width: 420px;
@@ -315,7 +315,7 @@ AUTH_PAGE_HTML = """\
   label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem; }
   input[type="password"], input[type="text"] {
     width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 8px;
-    font-size: 1rem; margin-bottom: 1.2rem;
+    font-size: 1rem; margin-bottom: 1.2rem; background: #fff; color: #333;
   }
   input[type="password"]:focus, input[type="text"]:focus { outline: none; border-color: #4a90d9; }
   button {
@@ -325,6 +325,19 @@ AUTH_PAGE_HTML = """\
   button:hover { background: #3a7bc8; }
   .help { font-size: 0.8rem; color: #999; margin-top: 1rem; }
   .help a { color: #4a90d9; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a1a; color: #e0e0e0; }
+    .card { background: #2a2a2a; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+    h1 { color: #f0f0f0; }
+    p { color: #aaa; }
+    label { color: #e0e0e0; }
+    input[type="password"], input[type="text"] {
+      background: #333; border-color: #555; color: #e0e0e0;
+    }
+    input[type="password"]:focus, input[type="text"]:focus { border-color: #6ab0f3; }
+    .help { color: #888; }
+    .help a { color: #6ab0f3; }
+  }
 </style>
 </head>
 <body>
@@ -361,15 +374,18 @@ LANDING_PAGE_HTML = """\
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f5f5f5; display: flex; justify-content: center; align-items: center;
-    min-height: 100vh; padding: 1rem;
+    background: #f5f5f5; color: #333; display: flex; justify-content: center;
+    align-items: center; min-height: 100vh; padding: 1rem;
   }
   .card {
-    background: #fff; border-radius: 12px; padding: 2rem; max-width: 520px;
+    background: #fff; border-radius: 12px; padding: 2rem; max-width: 600px;
     width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.1);
   }
   h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
   p { color: #666; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.5; }
+  .label { font-weight: 600; color: #333; margin-bottom: 0.5rem; }
+  a { color: #4a90d9; text-decoration: none; }
+  a:hover { text-decoration: underline; }
   .url-box {
     background: #f0f4f8; border: 1px solid #d0d7de; border-radius: 8px;
     padding: 0.75rem 1rem; font-family: monospace; font-size: 0.9rem;
@@ -386,23 +402,36 @@ LANDING_PAGE_HTML = """\
   .steps li { color: #555; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4; }
   .steps strong { color: #333; }
   .links { font-size: 0.85rem; color: #999; }
-  .links a { color: #4a90d9; text-decoration: none; }
-  .links a:hover { text-decoration: underline; }
   .separator { border: none; border-top: 1px solid #eee; margin: 1.2rem 0; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a1a; color: #e0e0e0; }
+    .card { background: #2a2a2a; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+    h1 { color: #f0f0f0; }
+    p { color: #aaa; }
+    .label { color: #e0e0e0; }
+    .url-box { background: #333; border-color: #555; color: #e0e0e0; }
+    .url-box:hover { background: #3a3a3a; }
+    .url-box .hint { color: #888; }
+    .steps li { color: #bbb; }
+    .steps strong { color: #e0e0e0; }
+    .links { color: #888; }
+    a { color: #6ab0f3; }
+    .separator { border-color: #444; }
+  }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>Intervals.icu MCP Server</h1>
-  <p>Connect Claude to your <a href="https://intervals.icu" style="color:#4a90d9;text-decoration:none">Intervals.icu</a> training data. Analyze activities, manage workouts, and track wellness through natural conversation.</p>
+  <p>Connect Claude to your <a href="https://intervals.icu">Intervals.icu</a> training data. Analyze activities, manage workouts, and track wellness through natural conversation.</p>
 
-  <p style="font-weight:600;color:#333;margin-bottom:0.5rem">Connector URL</p>
+  <p class="label">Connector URL</p>
   <div class="url-box" onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>{this.querySelector('.hint').textContent='Copied!'});" data-url="{{base_url}}/mcp">
     {{base_url}}/mcp
     <span class="hint">click to copy</span>
   </div>
 
-  <p style="font-weight:600;color:#333;margin-bottom:0.5rem">How to connect</p>
+  <p class="label">How to connect</p>
   <ol class="steps">
     <li>Open the <strong>Claude app</strong> (mobile or desktop)</li>
     <li>Go to <strong>Settings &gt; Connectors &gt; Add Connector</strong></li>
