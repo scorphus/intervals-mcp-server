@@ -44,6 +44,7 @@ Usage:
     See the README for more details on configuration and usage.
 """
 
+import contextvars
 from json import JSONDecodeError
 import logging
 import os
@@ -91,6 +92,48 @@ def _get_httpx_client() -> httpx.AsyncClient:
     if httpx_client is None or httpx_client.is_closed:
         httpx_client = httpx.AsyncClient()
     return httpx_client
+
+
+_bearer_api_key: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "_bearer_api_key", default=None
+)
+
+
+def _get_intervals_api_key() -> str | None:
+    from mcp.server.auth.middleware.auth_context import get_access_token
+
+    access_token = get_access_token()
+    if access_token and hasattr(access_token, "intervals_api_key"):
+        return access_token.intervals_api_key
+    return _bearer_api_key.get()
+
+
+def _get_intervals_athlete_id() -> str | None:
+    from mcp.server.auth.middleware.auth_context import get_access_token
+
+    access_token = get_access_token()
+    if access_token and hasattr(access_token, "intervals_athlete_id"):
+        return access_token.intervals_athlete_id
+    return None
+
+
+class BearerAuthMiddleware:
+    """ASGI middleware that extracts Authorization: Bearer <key> into a context var."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            headers = dict(scope.get("headers", []))
+            auth = headers.get(b"authorization", b"").decode()
+            if auth.startswith("Bearer "):
+                token = _bearer_api_key.set(auth[7:])
+                try:
+                    return await self.app(scope, receive, send)
+                finally:
+                    _bearer_api_key.reset(token)
+        await self.app(scope, receive, send)
 
 
 @asynccontextmanager
@@ -174,8 +217,8 @@ async def make_intervals_request(
     if has_body:
         headers["Content-Type"] = "application/json"
 
-    # Use provided api_key or fall back to global API_KEY
-    key_to_use = api_key if api_key is not None else API_KEY
+    # Use provided api_key, then token from auth context, then env var
+    key_to_use = api_key if api_key is not None else _get_intervals_api_key() or API_KEY
     if not key_to_use:
         logger.error("No API key provided for request to: %s", url)
         return {
@@ -308,7 +351,7 @@ async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-
         List of activity dictionaries or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -502,7 +545,7 @@ async def list_events(
         List of event dictionaries or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -567,7 +610,7 @@ async def get_event_by_id(
         Dictionary containing event details or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -609,7 +652,7 @@ async def get_wellness_data(
         Dictionary or list containing wellness data, or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -668,7 +711,7 @@ async def delete_event(
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
         event_id: The Intervals.icu event ID
     """
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
     if not event_id:
@@ -696,7 +739,7 @@ async def delete_events_by_date_range(
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
     """
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
     params = {"oldest": validate_date(start_date), "newest": validate_date(end_date)}
@@ -968,7 +1011,7 @@ async def get_athlete(
         Dictionary containing comprehensive athlete data including sport settings and custom items
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1129,7 +1172,7 @@ async def download_workout_zwo(
         The workout file content in Zwift (zwo) XML format as a string
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1173,7 +1216,7 @@ async def get_power_curves(
         List of dictionaries containing power curves for the specified athlete and sport
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1253,7 +1296,7 @@ async def get_pace_curves(
         List of dictionaries containing pace curves for the specified athlete and sport
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1339,7 +1382,7 @@ async def get_power_hr_curve(
         - ftp: Functional threshold power
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1452,7 +1495,7 @@ async def get_gear_list(
         athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
     """
-    athlete_id_to_use = athlete_id if athlete_id is not None else ATHLETE_ID
+    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1471,4 +1514,43 @@ async def get_gear_list(
 
 # Run the server
 if __name__ == "__main__":
-    mcp.run()
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    if transport == "streamable-http":
+        import uvicorn
+
+        from intervals_mcp_server.auth import IntervalsOAuthProvider
+        from mcp.server.auth.provider import ProviderTokenVerifier
+        from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
+
+        host = os.getenv("MCP_HOST", "0.0.0.0")
+        port = int(os.getenv("MCP_PORT", "8000"))
+        issuer_url = os.getenv("MCP_ISSUER_URL", f"http://localhost:{port}")
+        resource_url = os.getenv("MCP_RESOURCE_URL", issuer_url)
+
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        auth_provider = IntervalsOAuthProvider()
+        mcp.settings.stateless_http = True
+        mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        )
+        mcp.settings.auth = AuthSettings(
+            issuer_url=issuer_url,
+            resource_server_url=resource_url,
+            client_registration_options=ClientRegistrationOptions(enabled=True),
+        )
+        mcp._auth_server_provider = auth_provider
+        mcp._token_verifier = ProviderTokenVerifier(auth_provider)
+
+        @mcp.custom_route("/intervals-auth", methods=["GET"])
+        async def auth_page(request):
+            return await auth_provider.handle_auth_page(request)
+
+        @mcp.custom_route("/intervals-auth", methods=["POST"])
+        async def auth_submit(request):
+            return await auth_provider.handle_auth_submit(request)
+
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host=host, port=port)
+    else:
+        mcp.run()
