@@ -229,6 +229,12 @@ class IntervalsOAuthProvider:
     ) -> None:
         pass
 
+    # --- Landing page ---
+
+    async def handle_landing_page(self, request: Request):
+        base_url = str(request.base_url).rstrip("/")
+        return HTMLResponse(LANDING_PAGE_HTML.replace("{{base_url}}", base_url))
+
     # --- Custom auth page ---
 
     async def handle_auth_page(self, request: Request):
@@ -338,6 +344,81 @@ AUTH_PAGE_HTML = """\
     Find both at
     <a href="https://intervals.icu/settings" target="_blank">intervals.icu/settings</a>
     &mdash; Athlete ID is at the top, API key under "Developer Settings".
+  </p>
+</div>
+</body>
+</html>
+"""
+
+LANDING_PAGE_HTML = """\
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intervals.icu MCP Server</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f5; display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 1rem;
+  }
+  .card {
+    background: #fff; border-radius: 12px; padding: 2rem; max-width: 520px;
+    width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+  p { color: #666; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.5; }
+  .url-box {
+    background: #f0f4f8; border: 1px solid #d0d7de; border-radius: 8px;
+    padding: 0.75rem 1rem; font-family: monospace; font-size: 0.9rem;
+    word-break: break-all; margin-bottom: 1.2rem; color: #333;
+    cursor: pointer; position: relative;
+  }
+  .url-box:hover { background: #e8edf2; }
+  .url-box .hint {
+    position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.75rem; color: #999;
+  }
+  .steps { padding-left: 1.2rem; margin-bottom: 1.2rem; }
+  .steps li { color: #555; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4; }
+  .steps strong { color: #333; }
+  .links { font-size: 0.85rem; color: #999; }
+  .links a { color: #4a90d9; text-decoration: none; }
+  .links a:hover { text-decoration: underline; }
+  .separator { border: none; border-top: 1px solid #eee; margin: 1.2rem 0; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Intervals.icu MCP Server</h1>
+  <p>Connect Claude to your <a href="https://intervals.icu" style="color:#4a90d9;text-decoration:none">Intervals.icu</a> training data. Analyze activities, manage workouts, and track wellness through natural conversation.</p>
+
+  <p style="font-weight:600;color:#333;margin-bottom:0.5rem">Connector URL</p>
+  <div class="url-box" onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>{this.querySelector('.hint').textContent='Copied!'});" data-url="{{base_url}}/mcp">
+    {{base_url}}/mcp
+    <span class="hint">click to copy</span>
+  </div>
+
+  <p style="font-weight:600;color:#333;margin-bottom:0.5rem">How to connect</p>
+  <ol class="steps">
+    <li>Open the <strong>Claude app</strong> (mobile or desktop)</li>
+    <li>Go to <strong>Settings &gt; Connectors &gt; Add Connector</strong></li>
+    <li>Paste the URL above</li>
+    <li>Enter your Intervals.icu <strong>Athlete ID</strong> and <strong>API Key</strong> when prompted</li>
+  </ol>
+
+  <p class="links">
+    Find your credentials at
+    <a href="https://intervals.icu/settings" target="_blank">intervals.icu/settings</a>
+    &mdash; Athlete ID is at the top, API key under Developer Settings.
+  </p>
+
+  <hr class="separator">
+  <p class="links">
+    <a href="https://github.com/scorphus/intervals-mcp-server" target="_blank">GitHub</a>
   </p>
 </div>
 </body>

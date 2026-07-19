@@ -1542,6 +1542,10 @@ if __name__ == "__main__":
         mcp._auth_server_provider = auth_provider
         mcp._token_verifier = ProviderTokenVerifier(auth_provider)
 
+        @mcp.custom_route("/", methods=["GET"])
+        async def landing(request):
+            return await auth_provider.handle_landing_page(request)
+
         @mcp.custom_route("/intervals-auth", methods=["GET"])
         async def auth_page(request):
             return await auth_provider.handle_auth_page(request)
