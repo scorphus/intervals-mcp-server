@@ -1512,6 +1512,72 @@ async def get_gear_list(
     return result
 
 
+@mcp.tool()
+async def calculate_swim_pace(
+    percentage: int,
+    athlete_id: str | None = None,
+    api_key: str | None = None,
+) -> dict | str:
+    """Calculate swim pace per 25m at a given percentage of CSS (Critical Swim Speed).
+
+    Fetches the athlete's CSS from their Intervals.icu swim sport settings,
+    computes the pace at the requested percentage, and returns it formatted
+    as minutes and seconds per 25m.
+
+    Args:
+        percentage: Target intensity as a percentage of CSS (e.g. 80 for 80%)
+        athlete_id: The Intervals.icu athlete ID (optional)
+        api_key: The Intervals.icu API key (optional)
+    """
+    athlete_id_to_use = (
+        athlete_id
+        if athlete_id is not None
+        else _get_intervals_athlete_id() or ATHLETE_ID
+    )
+    if not athlete_id_to_use:
+        return "Error: No athlete ID provided."
+
+    result = await make_intervals_request(
+        url=f"/athlete/{athlete_id_to_use}", api_key=api_key
+    )
+    if isinstance(result, dict) and "error" in result:
+        return f"Error fetching athlete: {result.get('message')}"
+
+    css_ms = None
+    for sport in result.get("sportSettings", []):
+        if sport.get("types") and any(
+            t in sport["types"] for t in ["Swim", "OpenWaterSwim"]
+        ):
+            css_ms = sport.get("threshold_pace")
+            break
+
+    if css_ms is None or css_ms <= 0:
+        return "Error: No CSS (threshold pace) found in swim sport settings."
+
+    secs_per_100m = 100 / css_ms
+    target_secs_per_100m = secs_per_100m / (percentage / 100)
+    target_secs_per_25m = target_secs_per_100m / 4
+
+    whole_25 = int(target_secs_per_25m)
+    frac_25 = round((target_secs_per_25m - whole_25) * 100)
+    if frac_25 >= 100:
+        whole_25 += 1
+        frac_25 = 0
+
+    css_rounded = round(secs_per_100m)
+    target_rounded = round(target_secs_per_100m)
+
+    return {
+        "css_per_100m": f"{css_rounded // 60}:{css_rounded % 60:02d}",
+        "percentage": percentage,
+        "pace_per_25m": (whole_25, frac_25),
+        "pace_per_25m_formatted": f"{whole_25}:{frac_25:02d}",
+        "pace_per_25m_total_seconds": round(target_secs_per_25m, 2),
+        "pace_per_100m": f"{target_rounded // 60}:{target_rounded % 60:02d}",
+        "pace_per_100m_total_seconds": round(target_secs_per_100m, 2),
+    }
+
+
 # Run the server
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio")

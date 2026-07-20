@@ -27,6 +27,7 @@ os.environ.setdefault("ATHLETE_ID", "i1")
 from intervals_mcp_server.server import (  # pylint: disable=wrong-import-position
     add_or_update_event,
     calculate_date_info,
+    calculate_swim_pace,
     download_workout_zwo,
     get_activities,
     get_activity_details,
@@ -687,3 +688,93 @@ def test_get_activity_hr_curve_missing_id():
     """
     result = asyncio.run(get_activity_hr_curve(""))
     assert result == "Error: Activity ID is required."
+
+
+def _fake_athlete_response(css_ms):
+    return {
+        "id": "i1",
+        "sportSettings": [
+            {"types": ["Swim", "OpenWaterSwim"], "threshold_pace": css_ms},
+        ],
+    }
+
+
+def test_calculate_swim_pace_basic(monkeypatch):
+    async def fake_request(*_args, **_kwargs):
+        return _fake_athlete_response(1.25)
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(calculate_swim_pace(percentage=100, athlete_id="i1"))
+    assert result["css_per_100m"] == "1:20"
+    assert result["pace_per_25m"] == (20, 0)
+    assert result["pace_per_25m_formatted"] == "20:00"
+    assert result["pace_per_100m"] == "1:20"
+
+
+def test_calculate_swim_pace_80_percent(monkeypatch):
+    async def fake_request(*_args, **_kwargs):
+        return _fake_athlete_response(1.25)
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(calculate_swim_pace(percentage=80, athlete_id="i1"))
+    assert result["pace_per_25m"] == (25, 0)
+    assert result["pace_per_25m_formatted"] == "25:00"
+    assert result["pace_per_100m"] == "1:40"
+
+
+def test_calculate_swim_pace_fractional(monkeypatch):
+    async def fake_request(*_args, **_kwargs):
+        return _fake_athlete_response(1.25)
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(calculate_swim_pace(percentage=70, athlete_id="i1"))
+    assert result["pace_per_25m"] == (28, 57)
+    assert result["pace_per_25m_formatted"] == "28:57"
+
+
+def test_calculate_swim_pace_rounding_edge_case(monkeypatch):
+    async def fake_request(*_args, **_kwargs):
+        return _fake_athlete_response(0.94)
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(calculate_swim_pace(percentage=95, athlete_id="i1"))
+    assert result["pace_per_25m"][1] < 100
+    assert result["pace_per_25m"] == (28, 0)
+    assert result["pace_per_25m_formatted"] == "28:00"
+
+
+def test_calculate_swim_pace_mm_ss_truncation(monkeypatch):
+    """CSS of ~0.9091 m/s → ~110s/100m = 1:50, not 1:49."""
+    async def fake_request(*_args, **_kwargs):
+        return _fake_athlete_response(0.9091)
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(calculate_swim_pace(percentage=100, athlete_id="i1"))
+    assert result["css_per_100m"] == "1:50"
+    assert result["pace_per_100m"] == "1:50"
+
+
+def test_calculate_swim_pace_no_css(monkeypatch):
+    async def fake_request(*_args, **_kwargs):
+        return {"id": "i1", "sportSettings": []}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(calculate_swim_pace(percentage=80, athlete_id="i1"))
+    assert isinstance(result, str)
+    assert "No CSS" in result
+
+
+def test_calculate_swim_pace_no_athlete_id():
+    result = asyncio.run(calculate_swim_pace(percentage=80, athlete_id=""))
+    assert isinstance(result, str)
+    assert "No athlete ID" in result
+
+
+def test_calculate_swim_pace_api_error(monkeypatch):
+    async def fake_request(*_args, **_kwargs):
+        return {"error": True, "message": "Unauthorized"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(calculate_swim_pace(percentage=80, athlete_id="i1"))
+    assert isinstance(result, str)
+    assert "Unauthorized" in result
