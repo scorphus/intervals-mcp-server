@@ -14,6 +14,7 @@ import hmac
 import os
 import secrets
 import time
+from importlib.metadata import version as pkg_version
 
 import jwt
 from cryptography.fernet import Fernet
@@ -233,7 +234,12 @@ class IntervalsOAuthProvider:
 
     async def handle_landing_page(self, request: Request):
         base_url = str(request.base_url).rstrip("/")
-        return HTMLResponse(LANDING_PAGE_HTML.replace("{{base_url}}", base_url))
+        try:
+            ver = pkg_version("intervals-mcp-server")
+        except Exception:
+            ver = "dev"
+        html = LANDING_PAGE_HTML.replace("{{base_url}}", base_url).replace("{{version}}", ver)
+        return HTMLResponse(html)
 
     # --- Custom auth page ---
 
@@ -448,6 +454,7 @@ LANDING_PAGE_HTML = """\
   <hr class="separator">
   <p class="links">
     <a href="https://github.com/scorphus/intervals-mcp-server" target="_blank">GitHub</a>
+    &mdash; v{{version}}
   </p>
 </div>
 </body>
