@@ -181,3 +181,4 @@ cython_debug/
 # TODO
 TODO
 .vercel
+.env*
