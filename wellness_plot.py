@@ -76,7 +76,9 @@ def fetch_wellness_data(days: int) -> list[dict]:
     return response.json()
 
 
-def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, dark_mode: bool = False) -> None:
+def plot_wellness(
+    wellness_data: list[dict], output_file: str, num_days: int, dark_mode: bool = False
+) -> None:
     """Generate wellness plot from data.
 
     Args:
@@ -131,7 +133,9 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
     date_start = dates[0].strftime("%b %d")
     date_end = dates[-1].strftime("%b %d, %Y")
 
-    def moving_average_std(values: list[float | None], window: int = 7) -> tuple[list[float | None], list[float | None]]:
+    def moving_average_std(
+        values: list[float | None], window: int = 7
+    ) -> tuple[list[float | None], list[float | None]]:
         """Calculate moving average and standard deviation."""
         ma: list[float | None] = []
         std: list[float | None] = []
@@ -151,7 +155,9 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
                 std.append(None)
         return ma, std
 
-    def baseline_range(values: list[float | None], window: int = 28) -> tuple[list[float | None], list[float | None]]:
+    def baseline_range(
+        values: list[float | None], window: int = 28
+    ) -> tuple[list[float | None], list[float | None]]:
         """Calculate baseline range (28-day MA with std)."""
         return moving_average_std(values, window)
 
@@ -164,7 +170,9 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
             if handle is not None:
                 handle.set_alpha(0.5)
 
-    def setup_axis(ax: "Axes", ylabel: str, tick_interval: float, legend_loc: str = "lower left") -> None:
+    def setup_axis(
+        ax: "Axes", ylabel: str, tick_interval: float, legend_loc: str = "lower left"
+    ) -> None:
         """Configure axis with common settings."""
         ax.set_ylabel(ylabel, fontsize=12, fontweight="bold")
         ax.grid(True, alpha=0.3)
@@ -188,12 +196,33 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
             if use_bars:
                 ax.bar(d, v, width=0.8, color=color, alpha=0.3, zorder=point_zorder)
             else:
-                ax.plot(d, v, marker="o", linewidth=1, markersize=4, color=color, alpha=0.375, zorder=point_zorder)
+                ax.plot(
+                    d,
+                    v,
+                    marker="o",
+                    linewidth=1,
+                    markersize=4,
+                    color=color,
+                    alpha=0.375,
+                    zorder=point_zorder,
+                )
         ma, std = ma_full[warmup:], std_full[warmup:]
         smooth_d, smooth_v, lower, upper = smooth_curve(dates, ma, std)
-        if smooth_d is not None and smooth_v is not None and lower is not None and upper is not None:
+        if (
+            smooth_d is not None
+            and smooth_v is not None
+            and lower is not None
+            and upper is not None
+        ):
             ax.fill_between(smooth_d, lower, upper, color=color, alpha=0.2, zorder=point_zorder + 1)
-            ax.plot(smooth_d, smooth_v, linewidth=2, color=color, label="7-day MA", zorder=point_zorder + 2)
+            ax.plot(
+                smooth_d,
+                smooth_v,
+                linewidth=2,
+                color=color,
+                label="7-day MA",
+                zorder=point_zorder + 2,
+            )
 
     def plot_baseline(
         ax: "Axes",
@@ -205,7 +234,11 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
     ) -> None:
         """Plot baseline range and line on axis."""
         bl_ma, bl_std = bl_ma_full[warmup:], bl_std_full[warmup:]
-        bl_clean = [(d, m, s) for d, m, s in zip(dates, bl_ma, bl_std, strict=False) if m is not None and s is not None]
+        bl_clean = [
+            (d, m, s)
+            for d, m, s in zip(dates, bl_ma, bl_std, strict=False)
+            if m is not None and s is not None
+        ]
         if not bl_clean:
             return
         bd, bm, bs = zip(*bl_clean, strict=False)
@@ -213,7 +246,13 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
             bl_lower = [m - s for m, s in zip(bm, bs, strict=False)]
             bl_upper = [m + s for m, s in zip(bm, bs, strict=False)]
             ax.fill_between(
-                bd, bl_lower, bl_upper, color=baseline_fill_color, alpha=0.5, label="Baseline range", zorder=1
+                bd,
+                bl_lower,
+                bl_upper,
+                color=baseline_fill_color,
+                alpha=0.5,
+                label="Baseline range",
+                zorder=1,
             )
         # Baseline line: 7-day MA of the 28-day MA
         bl_ma_7d, _ = moving_average_std(list(bm))
@@ -221,7 +260,15 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
         if bl_line_clean:
             bld, blm = zip(*bl_line_clean, strict=False)
             color = line_color or baseline_line_color
-            ax.plot(bld, blm, color=color, linestyle="--", alpha=0.75, label=f"Baseline ({blm[-1]:{fmt}})", zorder=0)
+            ax.plot(
+                bld,
+                blm,
+                color=color,
+                linestyle="--",
+                alpha=0.75,
+                label=f"Baseline ({blm[-1]:{fmt}})",
+                zorder=0,
+            )
 
     def smooth_curve(
         date_list: list[datetime],
@@ -272,7 +319,9 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
 
     # Plot 3: Sleep Score
     sleep_bl_ma, sleep_bl_std = baseline_range(sleep_full)
-    plot_baseline(axes[2], sleep_bl_ma, sleep_bl_std, show_range=False, line_color=COLOR_SLEEP_SCORE)
+    plot_baseline(
+        axes[2], sleep_bl_ma, sleep_bl_std, show_range=False, line_color=COLOR_SLEEP_SCORE
+    )
     sleep_ma_full, sleep_std_full = moving_average_std(sleep_full)
     plot_metric(axes[2], sleep_scores, sleep_ma_full, sleep_std_full, COLOR_SLEEP_SCORE)
     axes[2].set_ylim(60, 100)
@@ -280,9 +329,24 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
 
     # Plot 4: Sleep Hours
     hours_bl_ma, hours_bl_std = baseline_range(sleep_hours_full)
-    plot_baseline(axes[3], hours_bl_ma, hours_bl_std, fmt=".1f", show_range=False, line_color=COLOR_SLEEP_HOURS)
+    plot_baseline(
+        axes[3],
+        hours_bl_ma,
+        hours_bl_std,
+        fmt=".1f",
+        show_range=False,
+        line_color=COLOR_SLEEP_HOURS,
+    )
     hours_ma_full, hours_std_full = moving_average_std(sleep_hours_full)
-    plot_metric(axes[3], sleep_hours, hours_ma_full, hours_std_full, COLOR_SLEEP_HOURS, point_zorder=1, use_bars=True)
+    plot_metric(
+        axes[3],
+        sleep_hours,
+        hours_ma_full,
+        hours_std_full,
+        COLOR_SLEEP_HOURS,
+        point_zorder=1,
+        use_bars=True,
+    )
     axes[3].set_ylim(0, 10)
     setup_axis(axes[3], "Sleep Hours", 1)
 
@@ -290,7 +354,8 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
     # TSB (Form) on secondary axis - plot first (behind)
     ax3_tsb = axes[4].twinx()
     tsb_values = [
-        (c - a) if c is not None and a is not None else None for c, a in zip(ctl_values, atl_values, strict=False)
+        (c - a) if c is not None and a is not None else None
+        for c, a in zip(ctl_values, atl_values, strict=False)
     ]
     tsb_clean = [(d, v) for d, v in zip(dates, tsb_values, strict=False) if v is not None]
     if tsb_clean:
@@ -301,7 +366,9 @@ def plot_wellness(wellness_data: list[dict], output_file: str, num_days: int, da
     style_legend(ax3_tsb, loc="upper right")
 
     # Daily Load bars (in front)
-    axes[4].bar(dates, loads, width=0.8, color=COLOR_DAILY_LOAD, alpha=0.5, label="Daily Load", zorder=3)
+    axes[4].bar(
+        dates, loads, width=0.8, color=COLOR_DAILY_LOAD, alpha=0.5, label="Daily Load", zorder=3
+    )
 
     # CTL (Fitness) and ATL (Fatigue)
     ctl_clean = [(d, v) for d, v in zip(dates, ctl_values, strict=False) if v is not None]

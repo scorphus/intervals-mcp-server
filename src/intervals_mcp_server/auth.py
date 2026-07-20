@@ -35,9 +35,7 @@ JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_TTL = 86400 * 30
 REFRESH_TOKEN_TTL = 86400 * 90
 
-_fernet_key = base64.urlsafe_b64encode(
-    hashlib.sha256(JWT_SECRET.encode()).digest()
-)
+_fernet_key = base64.urlsafe_b64encode(hashlib.sha256(JWT_SECRET.encode()).digest())
 _fernet = Fernet(_fernet_key)
 
 
@@ -78,13 +76,10 @@ def _decode_jwt(token: str) -> dict | None:
 
 
 def _derive_client_secret(client_id: str) -> str:
-    return hmac.new(
-        JWT_SECRET.encode(), client_id.encode(), hashlib.sha256
-    ).hexdigest()
+    return hmac.new(JWT_SECRET.encode(), client_id.encode(), hashlib.sha256).hexdigest()
 
 
 class IntervalsOAuthProvider:
-
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         claims = _decode_jwt(client_id)
         if not claims or claims.get("type") != "client":
@@ -250,14 +245,10 @@ class IntervalsOAuthProvider:
             return HTMLResponse("Invalid or expired auth request.", status_code=400)
 
         error = request.query_params.get("error", "")
-        error_html = (
-            f'<p style="color:#e74c3c;margin-bottom:1rem">{error}</p>' if error else ""
-        )
+        error_html = f'<p style="color:#e74c3c;margin-bottom:1rem">{error}</p>' if error else ""
 
         return HTMLResponse(
-            AUTH_PAGE_HTML.replace("{{request_id}}", request_id).replace(
-                "{{error}}", error_html
-            )
+            AUTH_PAGE_HTML.replace("{{request_id}}", request_id).replace("{{error}}", error_html)
         )
 
     async def handle_auth_submit(self, request: Request):
@@ -291,9 +282,7 @@ class IntervalsOAuthProvider:
         )
 
         return RedirectResponse(
-            construct_redirect_uri(
-                claims["redirect_uri"], code=code, state=claims.get("state")
-            ),
+            construct_redirect_uri(claims["redirect_uri"], code=code, state=claims.get("state")),
             status_code=302,
         )
 

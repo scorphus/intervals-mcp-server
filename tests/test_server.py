@@ -122,6 +122,7 @@ def test_get_activity_power_curves_with_error(monkeypatch):
     """
     Test get_activity_power_curves handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "Activity not found"}
 
@@ -226,7 +227,9 @@ def test_add_or_update_event(monkeypatch):
 
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_post_request)
     result = asyncio.run(
-        add_or_update_event(athlete_id="i1", start_date="2024-01-15", name="Test Workout", workout_type="Ride")
+        add_or_update_event(
+            athlete_id="i1", start_date="2024-01-15", name="Test Workout", workout_type="Ride"
+        )
     )
     assert "Successfully created event:" in result
     assert '"id": "e123"' in result
@@ -455,6 +458,7 @@ def test_list_events_with_error(monkeypatch):
     """
     Test list_events handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "Athlete not found"}
 
@@ -488,6 +492,7 @@ def test_get_power_curves_with_error(monkeypatch):
     """
     Test get_power_curves handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "No power data available"}
 
@@ -521,6 +526,7 @@ def test_get_pace_curves_with_error(monkeypatch):
     """
     Test get_pace_curves handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "No pace data available"}
 
@@ -554,6 +560,7 @@ def test_get_activity_pace_curve_with_error(monkeypatch):
     """
     Test get_activity_pace_curve handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "Activity not found"}
 
@@ -597,6 +604,7 @@ def test_get_power_hr_curve_with_error(monkeypatch):
     """
     Test get_power_hr_curve handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "No data available"}
 
@@ -631,6 +639,7 @@ def test_get_activity_power_vs_hr_with_error(monkeypatch):
     """
     Test get_activity_power_vs_hr handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "Activity not found"}
 
@@ -673,6 +682,7 @@ def test_get_activity_hr_curve_with_error(monkeypatch):
     """
     Test get_activity_hr_curve handles API errors gracefully.
     """
+
     async def fake_request_error(*_args, **_kwargs):
         return {"error": True, "message": "Activity not found"}
 
@@ -745,6 +755,7 @@ def test_calculate_swim_pace_rounding_edge_case(monkeypatch):
 
 def test_calculate_swim_pace_mm_ss_truncation(monkeypatch):
     """CSS of ~0.9091 m/s → ~110s/100m = 1:50, not 1:49."""
+
     async def fake_request(*_args, **_kwargs):
         return _fake_athlete_response(0.9091)
 

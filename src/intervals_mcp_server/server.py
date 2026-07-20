@@ -351,7 +351,9 @@ async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-
         List of activity dictionaries or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -478,9 +480,7 @@ async def get_activity_messages(activity_id: str, api_key: str | None = None) ->
         activity_id: The Intervals.icu activity ID
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
     """
-    result = await make_intervals_request(
-        url=f"/activity/{activity_id}/messages", api_key=api_key
-    )
+    result = await make_intervals_request(url=f"/activity/{activity_id}/messages", api_key=api_key)
 
     if isinstance(result, dict) and "error" in result:
         return f"Error fetching activity messages: {result.get('message')}"
@@ -545,7 +545,9 @@ async def list_events(
         List of event dictionaries or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -610,7 +612,9 @@ async def get_event_by_id(
         Dictionary containing event details or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -652,7 +656,9 @@ async def get_wellness_data(
         Dictionary or list containing wellness data, or error message
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -711,7 +717,9 @@ async def delete_event(
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
         event_id: The Intervals.icu event ID
     """
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
     if not event_id:
@@ -739,7 +747,9 @@ async def delete_events_by_date_range(
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
     """
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
     params = {"oldest": validate_date(start_date), "newest": validate_date(end_date)}
@@ -752,15 +762,17 @@ async def delete_events_by_date_range(
     failed_events = []
     for event in events:
         result = await make_intervals_request(
-            url=f"/athlete/{athlete_id_to_use}/events/{event.get('id')}", api_key=api_key, method="DELETE"
+            url=f"/athlete/{athlete_id_to_use}/events/{event.get('id')}",
+            api_key=api_key,
+            method="DELETE",
         )
         if isinstance(result, dict) and "error" in result:
-            failed_events.append(event.get('id'))
+            failed_events.append(event.get("id"))
     return f"Deleted {len(events) - len(failed_events)} events. Failed to delete {len(failed_events)} events: {failed_events}"
 
 
 @mcp.tool()
-async def add_or_update_event( # pylint: disable=locally-disabled, too-many-arguments, too-many-positional-arguments
+async def add_or_update_event(  # pylint: disable=locally-disabled, too-many-arguments, too-many-positional-arguments
     workout_type: str,
     name: str,
     description: str | None = None,
@@ -922,7 +934,7 @@ async def add_or_update_event( # pylint: disable=locally-disabled, too-many-argu
                 "distance": distance,
             }
             result = await make_intervals_request(
-                url=f"/athlete/{athlete_id}/events" +("/"+event_id if event_id else ""),
+                url=f"/athlete/{athlete_id}/events" + ("/" + event_id if event_id else ""),
                 api_key=api_key,
                 data=data,
                 method="PUT" if event_id else "POST",
@@ -1011,7 +1023,9 @@ async def get_athlete(
         Dictionary containing comprehensive athlete data including sport settings and custom items
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1172,7 +1186,9 @@ async def download_workout_zwo(
         The workout file content in Zwift (zwo) XML format as a string
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1216,7 +1232,9 @@ async def get_power_curves(
         List of dictionaries containing power curves for the specified athlete and sport
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1296,7 +1314,9 @@ async def get_pace_curves(
         List of dictionaries containing pace curves for the specified athlete and sport
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1382,7 +1402,9 @@ async def get_power_hr_curve(
         - ftp: Functional threshold power
     """
     # Use provided athlete_id or fall back to global ATHLETE_ID
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
@@ -1408,9 +1430,7 @@ async def get_power_hr_curve(
 
 
 @mcp.tool()
-async def get_activity_power_vs_hr(
-    activity_id: str, api_key: str | None = None
-) -> dict | str:
+async def get_activity_power_vs_hr(activity_id: str, api_key: str | None = None) -> dict | str:
     """Get activity power vs heart rate data in JSON format
 
     Args:
@@ -1447,9 +1467,7 @@ async def get_activity_power_vs_hr(
 
 
 @mcp.tool()
-async def get_activity_hr_curve(
-    activity_id: str, api_key: str | None = None
-) -> dict | str:
+async def get_activity_hr_curve(activity_id: str, api_key: str | None = None) -> dict | str:
     """Get activity heart rate curve in JSON format
 
     Args:
@@ -1495,13 +1513,13 @@ async def get_gear_list(
         athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
     """
-    athlete_id_to_use = athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    athlete_id_to_use = (
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
+    )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided and no default ATHLETE_ID found in environment variables."
 
-    result = await make_intervals_request(
-        url=f"/athlete/{athlete_id_to_use}/gear", api_key=api_key
-    )
+    result = await make_intervals_request(url=f"/athlete/{athlete_id_to_use}/gear", api_key=api_key)
 
     if isinstance(result, dict) and "error" in result:
         return f"Error fetching gear: {result.get('message')}"
@@ -1530,24 +1548,18 @@ async def calculate_swim_pace(
         api_key: The Intervals.icu API key (optional)
     """
     athlete_id_to_use = (
-        athlete_id
-        if athlete_id is not None
-        else _get_intervals_athlete_id() or ATHLETE_ID
+        athlete_id if athlete_id is not None else _get_intervals_athlete_id() or ATHLETE_ID
     )
     if not athlete_id_to_use:
         return "Error: No athlete ID provided."
 
-    result = await make_intervals_request(
-        url=f"/athlete/{athlete_id_to_use}", api_key=api_key
-    )
+    result = await make_intervals_request(url=f"/athlete/{athlete_id_to_use}", api_key=api_key)
     if isinstance(result, dict) and "error" in result:
         return f"Error fetching athlete: {result.get('message')}"
 
     css_ms = None
     for sport in result.get("sportSettings", []):
-        if sport.get("types") and any(
-            t in sport["types"] for t in ["Swim", "OpenWaterSwim"]
-        ):
+        if sport.get("types") and any(t in sport["types"] for t in ["Swim", "OpenWaterSwim"]):
             css_ms = sport.get("threshold_pace")
             break
 
