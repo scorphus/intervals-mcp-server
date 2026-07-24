@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import os
 import secrets
+import subprocess
 import time
 from importlib.metadata import version as pkg_version
 
@@ -60,6 +61,19 @@ class IntervalsRefreshToken(RefreshToken):
 class IntervalsAuthCode(AuthorizationCode):
     intervals_api_key: str
     intervals_athlete_id: str
+
+
+def _get_build_sha() -> str:
+    sha = os.getenv("VERCEL_GIT_COMMIT_SHA")
+    if sha:
+        return sha[:8]
+    try:
+        full = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL, text=True
+        ).strip()
+        return full[:8]
+    except Exception:
+        return ""
 
 
 def _mint_jwt(payload: dict, ttl: int) -> str:
@@ -233,7 +247,11 @@ class IntervalsOAuthProvider:
             ver = pkg_version("intervals-mcp-server")
         except Exception:
             ver = "dev"
-        html = LANDING_PAGE_HTML.replace("{{base_url}}", base_url).replace("{{version}}", ver)
+        html = (
+            LANDING_PAGE_HTML.replace("{{base_url}}", base_url)
+            .replace("{{version}}", ver)
+            .replace("{{build_sha}}", f" ({sha})" if (sha := _get_build_sha()) else "")
+        )
         return HTMLResponse(html)
 
     # --- Custom auth page ---
@@ -443,7 +461,7 @@ LANDING_PAGE_HTML = """\
   <hr class="separator">
   <p class="links">
     <a href="https://github.com/scorphus/intervals-mcp-server" target="_blank">GitHub</a>
-    &mdash; v{{version}}
+    &mdash; v{{version}}{{build_sha}}
   </p>
 </div>
 </body>
