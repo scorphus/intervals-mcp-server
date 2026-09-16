@@ -536,6 +536,23 @@ def test_get_pace_curves_with_error(monkeypatch):
     assert "Error fetching pace curves" in result
 
 
+def test_get_pace_curves_404_gives_friendly_message(monkeypatch):
+    """
+    Test get_pace_curves explains that pace curves only exist for pace-based
+    sports instead of leaking a raw 404.
+    """
+
+    async def fake_request_404(*_args, **_kwargs):
+        return {"error": True, "status_code": 404, "message": "404 Not Found"}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_404)
+    result = asyncio.run(get_pace_curves(athlete_id="1", type_="Ride"))
+    assert isinstance(result, str)
+    assert "Ride" in result
+    assert "Run and Swim" in result
+    assert "404" not in result
+
+
 # Realistic athlete curve payload: strings, lists, and nested dicts. The tools
 # used to declare `list[dict[str, float]]`, which made FastMCP's output-schema
 # validation reject every real response (regression guard for both curves tools).

@@ -1330,6 +1330,12 @@ async def get_pace_curves(
     )
 
     if isinstance(result, dict) and "error" in result:
+        if result.get("status_code") == 404:
+            return (
+                f"Error: No pace curves available for type '{type_}'. "
+                "Intervals.icu only computes pace curves for pace-based sports "
+                "such as Run and Swim."
+            )
         error_message = result.get("message", "Unknown error")
         return f"Error fetching pace curves: {error_message}"
 
