@@ -536,6 +536,56 @@ def test_get_pace_curves_with_error(monkeypatch):
     assert "Error fetching pace curves" in result
 
 
+# Realistic athlete curve payload: strings, lists, and nested dicts. The tools
+# used to declare `list[dict[str, float]]`, which made FastMCP's output-schema
+# validation reject every real response (regression guard for both curves tools).
+ATHLETE_CURVES_PAYLOAD = [
+    {
+        "id": "42d",
+        "label": "42 days",
+        "start_date_local": "2026-08-06T00:00:00",
+        "end_date_local": "2026-09-17T00:00:00",
+        "secs": [1, 2, 5],
+        "values": [944, 943, 929],
+        "watts": [944, 943, 929],
+        "watts_per_kg": [13.25, 13.24, 13.05],
+        "activity_id": ["i179198857", "i179198857", "i183376223"],
+        "powerModels": [{"type": "MORTON_3P", "ftp": 191}],
+        "ranks": {},
+        "mapPlot": {"startIndex": 71, "mapWatts": 260},
+        "weight": 71.2,
+    }
+]
+
+
+def test_get_power_curves_output_schema(monkeypatch):
+    """
+    Test get_power_curves passes FastMCP output-schema validation with a
+    realistic payload when called through the MCP tool layer.
+    """
+    from intervals_mcp_server.server import mcp
+
+    async def fake_request(*_args, **_kwargs):
+        return {"list": ATHLETE_CURVES_PAYLOAD}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    asyncio.run(mcp.call_tool("get_power_curves", {"athlete_id": "i1"}))
+
+
+def test_get_pace_curves_output_schema(monkeypatch):
+    """
+    Test get_pace_curves passes FastMCP output-schema validation with a
+    realistic payload when called through the MCP tool layer.
+    """
+    from intervals_mcp_server.server import mcp
+
+    async def fake_request(*_args, **_kwargs):
+        return {"list": ATHLETE_CURVES_PAYLOAD}
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    asyncio.run(mcp.call_tool("get_pace_curves", {"athlete_id": "i1"}))
+
+
 def test_get_activity_pace_curve(monkeypatch):
     """
     Test get_activity_pace_curve returns pace curve data for a specific activity.

@@ -1212,7 +1212,7 @@ async def get_power_curves(
     api_key: str | None = None,
     curves: str = "42d",
     type_: str = "Ride",
-) -> list[dict[str, float]] | str:
+) -> list[dict[str, Any]] | str:
     """Get power curves for an athlete from Intervals.icu
 
     Args:
@@ -1294,7 +1294,7 @@ async def get_pace_curves(
     api_key: str | None = None,
     curves: str = "42d",
     type_: str = "Run",
-) -> list[dict[str, float]] | str:
+) -> list[dict[str, Any]] | str:
     """Get pace curves for an athlete from Intervals.icu
 
     Args:
