@@ -14,7 +14,7 @@ authors = [
     { name = "Marc Vilanova" },
 ]
 dependencies = [
-    "mcp[cli]>=1.28",
+    "mcp[cli]>=2.2,<3",
     "httpx>=0.25.0",
     "pyjwt[crypto]>=2.10.1",
     "python-dotenv>=1.0.0",

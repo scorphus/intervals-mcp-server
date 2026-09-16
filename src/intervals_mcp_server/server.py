@@ -57,7 +57,7 @@ from typing import Any
 import json
 
 import httpx  # pylint: disable=import-error
-from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
+from mcp.server.mcpserver import MCPServer  # pylint: disable=import-error
 
 from intervals_mcp_server.utils.filtering import (
     transform_activities,
@@ -137,7 +137,7 @@ class BearerAuthMiddleware:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastMCP):
+async def lifespan(_app: MCPServer):
     """Context manager to close the shared httpx client when the server stops."""
     try:
         yield
@@ -146,8 +146,66 @@ async def lifespan(_app: FastMCP):
             await httpx_client.aclose()
 
 
-# Initialize FastMCP server with custom lifespan
-mcp = FastMCP("intervals-icu", lifespan=lifespan)
+def _build_auth() -> tuple[Any, dict[str, Any]]:
+    """Build OAuth constructor kwargs for MCPServer when running over HTTP.
+
+    MCP SDK 2.x only accepts auth configuration at construction time, so the
+    decision has to happen at import. Auth is enabled when MCP_ISSUER_URL is
+    set (Vercel) or the transport is streamable-http (local HTTP testing,
+    issuer defaulting to localhost). In stdio mode (Claude Desktop) both are
+    unset and the server is built without auth.
+
+    Returns the provider instance (None when auth is disabled — the provider
+    also serves the landing and credential pages) and the kwargs.
+    """
+    issuer_url = os.getenv("MCP_ISSUER_URL")
+    if not issuer_url:
+        if os.getenv("MCP_TRANSPORT") != "streamable-http":
+            return None, {}
+        issuer_url = f"http://localhost:{os.getenv('MCP_PORT', '8000')}"
+
+    from intervals_mcp_server.auth import IntervalsOAuthProvider
+    from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
+
+    provider = IntervalsOAuthProvider()
+    return provider, {
+        "auth_server_provider": provider,
+        "auth": AuthSettings(
+            issuer_url=issuer_url,
+            resource_server_url=os.getenv("MCP_RESOURCE_URL", issuer_url),
+            client_registration_options=ClientRegistrationOptions(enabled=True),
+        ),
+    }
+
+
+auth_provider, _auth_kwargs = _build_auth()
+
+# Initialize the MCP server with custom lifespan (and OAuth when over HTTP)
+mcp = MCPServer("intervals-icu", lifespan=lifespan, **_auth_kwargs)
+
+
+def build_http_app():
+    """Create the Streamable HTTP ASGI app with landing and credential-form routes."""
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    if auth_provider is not None:
+
+        @mcp.custom_route("/", methods=["GET"])
+        async def landing(request):
+            return await auth_provider.handle_landing_page(request)
+
+        @mcp.custom_route("/intervals-auth", methods=["GET"])
+        async def auth_page(request):
+            return await auth_provider.handle_auth_page(request)
+
+        @mcp.custom_route("/intervals-auth", methods=["POST"])
+        async def auth_submit(request):
+            return await auth_provider.handle_auth_submit(request)
+
+    return mcp.streamable_http_app(
+        stateless_http=True,
+        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+    )
 
 # Constants
 INTERVALS_API_BASE_URL = os.getenv("INTERVALS_API_BASE_URL", "https://intervals.icu/api/v1")
@@ -1602,43 +1660,9 @@ if __name__ == "__main__":
     if transport == "streamable-http":
         import uvicorn
 
-        from intervals_mcp_server.auth import IntervalsOAuthProvider
-        from mcp.server.auth.provider import ProviderTokenVerifier
-        from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
-
         host = os.getenv("MCP_HOST", "0.0.0.0")
         port = int(os.getenv("MCP_PORT", "8000"))
-        issuer_url = os.getenv("MCP_ISSUER_URL", f"http://localhost:{port}")
-        resource_url = os.getenv("MCP_RESOURCE_URL", issuer_url)
 
-        from mcp.server.transport_security import TransportSecuritySettings
-
-        auth_provider = IntervalsOAuthProvider()
-        mcp.settings.stateless_http = True
-        mcp.settings.transport_security = TransportSecuritySettings(
-            enable_dns_rebinding_protection=False,
-        )
-        mcp.settings.auth = AuthSettings(
-            issuer_url=issuer_url,
-            resource_server_url=resource_url,
-            client_registration_options=ClientRegistrationOptions(enabled=True),
-        )
-        mcp._auth_server_provider = auth_provider
-        mcp._token_verifier = ProviderTokenVerifier(auth_provider)
-
-        @mcp.custom_route("/", methods=["GET"])
-        async def landing(request):
-            return await auth_provider.handle_landing_page(request)
-
-        @mcp.custom_route("/intervals-auth", methods=["GET"])
-        async def auth_page(request):
-            return await auth_provider.handle_auth_page(request)
-
-        @mcp.custom_route("/intervals-auth", methods=["POST"])
-        async def auth_submit(request):
-            return await auth_provider.handle_auth_submit(request)
-
-        app = mcp.streamable_http_app()
-        uvicorn.run(app, host=host, port=port)
+        uvicorn.run(build_http_app(), host=host, port=port)
     else:
         mcp.run()
