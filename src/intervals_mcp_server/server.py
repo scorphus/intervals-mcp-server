@@ -202,8 +202,12 @@ def build_http_app():
         async def auth_submit(request):
             return await auth_provider.handle_auth_submit(request)
 
+    # json_response: answer each POST with a plain JSON body and close. The default
+    # streams every response over SSE, which on Vercel held the function open until
+    # the 300 s timeout — one connection, around the clock, ate the free tier.
     return mcp.streamable_http_app(
         stateless_http=True,
+        json_response=True,
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
     )
 
