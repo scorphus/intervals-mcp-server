@@ -1,23 +1,31 @@
 # Contributor Guide
 
-This project is a Python 3.12 backend service built with FastMCP and httpx. All source code lives under `src/intervals_mcp_server` and tests live under `tests`.
+MCP server for Intervals.icu. Python 3.12+, MCP SDK 2.x, httpx. Code in
+`src/intervals_mcp_server`, tests in `tests`.
 
-## Development Environment
-- Use [uv](https://github.com/astral-sh/uv) to create and manage the virtual environment.
-  - `uv venv --python 3.12`
-  - `source .venv/bin/activate`
-- Sync dependencies including dev extras with `uv sync --all-extras`.
-- When editing or running the server manually use `mcp run src/intervals_mcp_server/server.py`.
+## Setup
 
-## Testing Instructions
-- Run unit tests with `pytest` from the repository root.
-- Ensure linting passes with `ruff .` (no configuration file means default rules).
-- Run static type checks using `mypy src tests`.
-- All three steps (`ruff`, `mypy`, and `pytest`) should succeed before committing.
+```
+uv sync --all-extras
+```
 
-## PR Instructions
-- Use concise commit messages.
-- Title pull requests using the format `[intervals-mcp-server] <brief description>`.
-- Describe any manual testing steps performed and mention whether `pytest`, `ruff`, and `mypy` passed.
+## Running
 
-There is currently no frontend code in this repository. If a frontend is added in the future (for example with React or another framework), document how to run and test it within this file.
+- stdio (Claude Desktop): `python -m intervals_mcp_server.server` with
+  `API_KEY` and `ATHLETE_ID` set (see `.env.example`).
+- HTTP with OAuth: `MCP_TRANSPORT=streamable-http python -m intervals_mcp_server.server`.
+
+## Before committing
+
+```
+pytest tests --ignore=tests/real
+ruff check src api
+```
+
+`tests/real` hits the live Intervals.icu API and needs real credentials —
+don't run it in CI.
+
+## Deploying
+
+Push to `main`. Vercel builds and deploys it; the landing page footer shows
+the deployed commit. No manual deploys.
