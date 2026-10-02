@@ -856,3 +856,55 @@ def test_calculate_swim_pace_api_error(monkeypatch):
     result = asyncio.run(calculate_swim_pace(percentage=80, athlete_id="i1"))
     assert isinstance(result, str)
     assert "Unauthorized" in result
+
+
+def _run_middleware(method, path, body=b""):
+    """Drive RefuseStreamsMiddleware with a raw ASGI request; return (status, body, app_called)."""
+    from intervals_mcp_server.server import RefuseStreamsMiddleware
+
+    called = {"app": False}
+
+    async def inner_app(scope, receive, send):
+        called["app"] = True
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"inner"})
+
+    scope = {"type": "http", "method": method, "path": path, "headers": [], "client": ("1.2.3.4", 1)}
+    sent = []
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    asyncio.run(asyncio.wait_for(RefuseStreamsMiddleware(inner_app)(scope, receive, send), 2))
+    status = next(m["status"] for m in sent if m["type"] == "http.response.start")
+    out = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
+    return status, out, called["app"]
+
+
+def test_middleware_refuses_get_stream_immediately():
+    status, _, app_called = _run_middleware("GET", "/mcp")
+    assert status == 405
+    assert not app_called
+
+
+def test_middleware_refuses_subscriptions_listen_immediately():
+    body = b'{"jsonrpc":"2.0","id":7,"method":"subscriptions/listen","params":{}}'
+    status, out, app_called = _run_middleware("POST", "/mcp", body)
+    assert status == 200
+    assert not app_called
+    import json as _json
+
+    reply = _json.loads(out)
+    assert reply["id"] == 7
+    assert reply["error"]["code"] == -32601
+
+
+def test_middleware_passes_normal_requests_through():
+    body = b'{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+    status, out, app_called = _run_middleware("POST", "/mcp", body)
+    assert app_called
+    assert status == 200
+    assert out == b"inner"

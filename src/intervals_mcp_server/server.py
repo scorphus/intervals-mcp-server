@@ -184,6 +184,86 @@ auth_provider, _auth_kwargs = _build_auth()
 mcp = MCPServer("intervals-icu", lifespan=lifespan, **_auth_kwargs)
 
 
+async def _send_response(send, status: int, body: bytes = b"", headers=()) -> None:
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": [(b"content-length", str(len(body)).encode()), *headers],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
+async def _read_body(receive):
+    """Read the whole request body. Return it and a receive() that replays it."""
+    messages = []
+    body = b""
+    while True:
+        message = await receive()
+        messages.append(message)
+        body += message.get("body", b"")
+        if not message.get("more_body", False):
+            break
+    replay_iter = iter(messages)
+
+    async def replay():
+        try:
+            return next(replay_iter)
+        except StopIteration:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+    return body, replay
+
+
+def _parse_json(body: bytes) -> Any:
+    try:
+        return json.loads(body)
+    except (JSONDecodeError, UnicodeDecodeError):
+        return None
+
+
+class RefuseStreamsMiddleware:
+    """Answer, right away, the two MCP streams this stateless server can't use.
+
+    The server never pushes messages, but MCP clients open two long-lived
+    streams anyway: GET /mcp and POST subscriptions/listen. Both stay open
+    whatever json_response says, and on Vercel each one held a function
+    instance until the 300 s timeout. GET gets 405 (the spec's way to say
+    "no server stream here") and listen gets a method-not-found error.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope.get("path") != "/mcp":
+            return await self.app(scope, receive, send)
+        if scope.get("method") == "GET":
+            return await _send_response(send, 405, headers=[(b"allow", b"POST")])
+        if scope.get("method") != "POST":
+            return await self.app(scope, receive, send)
+
+        body, replay = await _read_body(receive)
+        payload = _parse_json(body)
+        if isinstance(payload, dict) and payload.get("method") == "subscriptions/listen":
+            error = {
+                "jsonrpc": "2.0",
+                "id": payload.get("id"),
+                "error": {
+                    "code": -32601,
+                    "message": "subscriptions/listen is not supported: this server is stateless",
+                },
+            }
+            return await _send_response(
+                send,
+                200,
+                json.dumps(error).encode(),
+                headers=[(b"content-type", b"application/json")],
+            )
+        await self.app(scope, replay, send)
+
+
 def build_http_app():
     """Create the Streamable HTTP ASGI app with landing and credential-form routes."""
     from mcp.server.transport_security import TransportSecuritySettings
@@ -202,14 +282,17 @@ def build_http_app():
         async def auth_submit(request):
             return await auth_provider.handle_auth_submit(request)
 
-    # json_response: answer each POST with a plain JSON body and close. The default
-    # streams every response over SSE, which on Vercel held the function open until
-    # the 300 s timeout — one connection, around the clock, ate the free tier.
-    return mcp.streamable_http_app(
-        stateless_http=True,
-        json_response=True,
-        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+    # json_response: answer each POST with a plain JSON body and close, instead of
+    # wrapping every response in an SSE stream. The two streams it doesn't cover
+    # are refused in RefuseStreamsMiddleware.
+    app = RefuseStreamsMiddleware(
+        mcp.streamable_http_app(
+            stateless_http=True,
+            json_response=True,
+            transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+        )
     )
+    return app
 
 # Constants
 INTERVALS_API_BASE_URL = os.getenv("INTERVALS_API_BASE_URL", "https://intervals.icu/api/v1")
