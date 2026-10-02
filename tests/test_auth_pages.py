@@ -43,3 +43,10 @@ def test_sign_in_page_explains_how_to_request_access():
     page = _sign_in_page("access_closed")
     assert "Access is currently closed." in page
     assert auth.ACCESS_REQUEST_HTML in page
+
+
+def test_landing_page_explains_how_to_request_access():
+    page = auth.IntervalsOAuthProvider().handle_landing_page(_request("/"))
+    html = asyncio.run(page).body.decode()
+    assert f"<p>{auth.ACCESS_DM_HTML}</p>" in html
+    assert f"<p>{auth.ACCESS_NEW_ACCOUNT_HTML}</p>" in html

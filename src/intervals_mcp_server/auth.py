@@ -296,6 +296,8 @@ class IntervalsOAuthProvider:
             LANDING_PAGE_HTML.replace("{{base_url}}", base_url)
             .replace("{{version}}", ver)
             .replace("{{build_sha}}", f" ({sha})" if (sha := _get_build_sha()) else "")
+            .replace("{{access_dm}}", ACCESS_DM_HTML)
+            .replace("{{access_new_account}}", ACCESS_NEW_ACCOUNT_HTML)
         )
         return HTMLResponse(html)
 
@@ -446,7 +448,7 @@ LANDING_PAGE_HTML = """\
     width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.1);
   }
   h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-  p { color: #666; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.5; }
+  p { color: #666; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.5; text-wrap: pretty; }
   .label { font-weight: 600; color: #333; margin-bottom: 0.5rem; }
   a { color: #4a90d9; text-decoration: none; }
   a:hover { text-decoration: underline; }
@@ -467,11 +469,19 @@ LANDING_PAGE_HTML = """\
   .steps strong { color: #333; }
   .links { font-size: 0.85rem; color: #999; }
   .separator { border: none; border-top: 1px solid #eee; margin: 1.2rem 0; }
+  .notice {
+    background: #fff8e6; border: 1px solid #f0d58c; border-radius: 8px;
+    padding: 0.85rem 1rem; margin-bottom: 1.2rem;
+  }
+  .notice p { color: #5c4a14; margin-bottom: 0.5rem; font-size: 0.9rem; }
+  .notice p:last-child { margin-bottom: 0; }
   @media (prefers-color-scheme: dark) {
     body { background: #1a1a1a; color: #e0e0e0; }
     .card { background: #2a2a2a; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
     h1 { color: #f0f0f0; }
     p { color: #aaa; }
+    .notice { background: #3a3320; border-color: #6b5a2a; }
+    .notice p { color: #e8d9a8; }
     .label { color: #e0e0e0; }
     .url-box { background: #333; border-color: #555; color: #e0e0e0; }
     .url-box:hover { background: #3a3a3a; }
@@ -488,6 +498,13 @@ LANDING_PAGE_HTML = """\
 <div class="card">
   <h1>Intervals.icu MCP Server</h1>
   <p>Connect Claude to your <a href="https://intervals.icu">Intervals.icu</a> training data. Analyze activities, manage workouts, and track wellness through natural conversation.</p>
+
+  <div class="notice">
+    <p><strong>Access is currently closed</strong> for maintenance, and it might take a while before it reopens.</p>
+    <p>{{access_dm}}</p>
+    <p>{{access_new_account}}</p>
+    <p>You can also run your own copy: <a href="https://github.com/scorphus/intervals-mcp-server" target="_blank">scorphus/intervals-mcp-server</a>.</p>
+  </div>
 
   <p class="label">Connector URL</p>
   <div class="url-box" onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>{this.querySelector('.hint').textContent='Copied!'});" data-url="{{base_url}}/mcp">
