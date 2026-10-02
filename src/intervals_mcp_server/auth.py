@@ -93,6 +93,13 @@ def _derive_client_secret(client_id: str) -> str:
     return hmac.new(JWT_SECRET.encode(), client_id.encode(), hashlib.sha256).hexdigest()
 
 
+# The sign-in page only shows these messages, picked by the ?error= code.
+# Text from the URL is never rendered, so a crafted link can't put HTML on the page.
+SIGN_IN_ERRORS = {
+    "missing_fields": "Both fields are required",
+}
+
+
 class IntervalsOAuthProvider:
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         claims = _decode_jwt(client_id)
@@ -262,7 +269,7 @@ class IntervalsOAuthProvider:
         if not claims or claims.get("type") != "pending":
             return HTMLResponse("Invalid or expired auth request.", status_code=400)
 
-        error = request.query_params.get("error", "")
+        error = SIGN_IN_ERRORS.get(request.query_params.get("error", ""), "")
         error_html = f'<p style="color:#e74c3c;margin-bottom:1rem">{error}</p>' if error else ""
 
         return HTMLResponse(
@@ -281,7 +288,7 @@ class IntervalsOAuthProvider:
 
         if not api_key or not athlete_id:
             return RedirectResponse(
-                f"/intervals-auth?request_id={request_id}&error=Both+fields+are+required",
+                f"/intervals-auth?request_id={request_id}&error=missing_fields",
                 status_code=302,
             )
 
