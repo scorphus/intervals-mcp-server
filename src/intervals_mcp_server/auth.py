@@ -39,6 +39,37 @@ REFRESH_TOKEN_TTL = 86400 * 90
 _fernet_key = base64.urlsafe_b64encode(hashlib.sha256(JWT_SECRET.encode()).digest())
 _fernet = Fernet(_fernet_key)
 
+# Comma-separated athlete IDs allowed to use the server. Unset or empty means
+# everyone. Checked on every token, so removing an ID cuts off its existing
+# tokens on the next request, with no secret rotation.
+ALLOWED_ATHLETE_IDS = {
+    a.strip() for a in os.getenv("ALLOWED_ATHLETE_IDS", "").split(",") if a.strip()
+}
+
+
+def _athlete_allowed(athlete_id: str | None) -> bool:
+    return not ALLOWED_ATHLETE_IDS or athlete_id in ALLOWED_ATHLETE_IDS
+
+
+FORUM_PROFILE_URL = "https://forum.intervals.icu/u/scorphus"
+FORUM_THREAD_URL = (
+    "https://forum.intervals.icu/t/mcp-server-for-connecting-claude-with-intervals-icu-api/95999"
+)
+
+# How to ask for access. The landing page shows the two parts as separate
+# paragraphs; the sign-in page shows them together.
+ACCESS_DM_HTML = (
+    "If you'd like access, send a DM to "
+    f'<a href="{FORUM_PROFILE_URL}" target="_blank">@scorphus</a> on the Intervals.icu forum '
+    "with your athlete ID, and you'll hear back when you're in."
+)
+ACCESS_NEW_ACCOUNT_HTML = (
+    "New forum account that can't send DMs yet? Reply in "
+    f'<a href="{FORUM_THREAD_URL}" target="_blank">the MCP thread</a> mentioning @scorphus '
+    "(don't post your athlete ID there), and I'll DM you."
+)
+ACCESS_REQUEST_HTML = f"{ACCESS_DM_HTML} {ACCESS_NEW_ACCOUNT_HTML}"
+
 
 def _encrypt(plaintext: str) -> str:
     return _fernet.encrypt(plaintext.encode()).decode()
@@ -97,6 +128,7 @@ def _derive_client_secret(client_id: str) -> str:
 # Text from the URL is never rendered, so a crafted link can't put HTML on the page.
 SIGN_IN_ERRORS = {
     "missing_fields": "Both fields are required",
+    "access_closed": "<strong>Access is currently closed.</strong> " + ACCESS_REQUEST_HTML,
 }
 
 
@@ -150,6 +182,8 @@ class IntervalsOAuthProvider:
             return None
         if claims["client_id"] != client.client_id:
             return None
+        if not _athlete_allowed(claims.get("athlete_id")):
+            return None
         return IntervalsAuthCode(
             code=authorization_code,
             scopes=claims.get("scopes", []),
@@ -189,6 +223,8 @@ class IntervalsOAuthProvider:
         claims = _decode_jwt(token)
         if not claims or claims.get("type") != "access":
             return None
+        if not _athlete_allowed(claims.get("athlete_id")):
+            return None
         return IntervalsAccessToken(
             token=token,
             client_id=claims["client_id"],
@@ -205,6 +241,8 @@ class IntervalsOAuthProvider:
         if not claims or claims.get("type") != "refresh":
             return None
         if claims["client_id"] != client.client_id:
+            return None
+        if not _athlete_allowed(claims.get("athlete_id")):
             return None
         return IntervalsRefreshToken(
             token=refresh_token,
@@ -292,6 +330,12 @@ class IntervalsOAuthProvider:
                 status_code=302,
             )
 
+        if not _athlete_allowed(athlete_id):
+            return RedirectResponse(
+                f"/intervals-auth?request_id={request_id}&error=access_closed",
+                status_code=302,
+            )
+
         code = _mint_jwt(
             {
                 "type": "auth_code",
@@ -331,7 +375,7 @@ AUTH_PAGE_HTML = """\
     width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.1);
   }
   h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-  p { color: #666; font-size: 0.9rem; margin-bottom: 1.2rem; line-height: 1.4; }
+  p { color: #666; font-size: 0.9rem; margin-bottom: 1.2rem; line-height: 1.4; text-wrap: pretty; }
   label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem; }
   input[type="password"], input[type="text"] {
     width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 8px;

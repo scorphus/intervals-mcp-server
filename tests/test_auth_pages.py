@@ -37,3 +37,9 @@ def test_sign_in_page_shows_known_error():
 def test_sign_in_page_ignores_text_from_url():
     page = _sign_in_page("%3Ca%20href%3D%22https%3A%2F%2Fevil%22%3Eevil%3C%2Fa%3E")
     assert "evil" not in page
+
+
+def test_sign_in_page_explains_how_to_request_access():
+    page = _sign_in_page("access_closed")
+    assert "Access is currently closed." in page
+    assert auth.ACCESS_REQUEST_HTML in page
