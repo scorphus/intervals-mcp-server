@@ -264,9 +264,29 @@ class RefuseStreamsMiddleware:
         await self.app(scope, replay, send)
 
 
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+_STATIC_FILES = {
+    "/favicon.ico": ("favicon.ico", "image/x-icon"),
+    "/favicon.svg": ("icon.svg", "image/svg+xml"),
+    "/logo.svg": ("logo.svg", "image/svg+xml"),
+    "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+}
+
+
 def build_http_app():
     """Create the Streamable HTTP ASGI app with landing and credential-form routes."""
     from mcp.server.transport_security import TransportSecuritySettings
+    from starlette.responses import FileResponse
+
+    for route, (filename, media_type) in _STATIC_FILES.items():
+
+        @mcp.custom_route(route, methods=["GET"])
+        async def static_file(request, filename=filename, media_type=media_type):
+            return FileResponse(
+                os.path.join(_STATIC_DIR, filename),
+                media_type=media_type,
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
 
     if auth_provider is not None:
 

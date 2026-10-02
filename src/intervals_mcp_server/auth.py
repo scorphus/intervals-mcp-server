@@ -364,6 +364,9 @@ AUTH_PAGE_HTML = """\
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Connect to Intervals.icu</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -435,6 +438,9 @@ LANDING_PAGE_HTML = """\
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Intervals.icu MCP Server</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
