@@ -11,6 +11,7 @@ in the JWT payload, so intercepted tokens cannot leak credentials.
 import base64
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 import subprocess
@@ -30,6 +31,8 @@ from mcp.server.auth.provider import (
     construct_redirect_uri,
 )
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
+
+logger = logging.getLogger("intervals_mcp_server.auth")
 
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
 JWT_ALGORITHM = "HS256"
@@ -223,6 +226,11 @@ class IntervalsOAuthProvider:
         claims = _decode_jwt(token)
         if not claims or claims.get("type") != "access":
             return None
+        logger.info(
+            "access token used: athlete=%s issued=%s",
+            claims.get("athlete_id"),
+            claims.get("iat"),
+        )
         if not _athlete_allowed(claims.get("athlete_id")):
             return None
         return IntervalsAccessToken(
@@ -331,6 +339,8 @@ class IntervalsOAuthProvider:
                 f"/intervals-auth?request_id={request_id}&error=missing_fields",
                 status_code=302,
             )
+
+        logger.info("credential form submitted: athlete=%s", athlete_id)
 
         if not _athlete_allowed(athlete_id):
             return RedirectResponse(
