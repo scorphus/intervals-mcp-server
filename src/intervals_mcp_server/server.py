@@ -1027,137 +1027,115 @@ async def add_or_update_event(  # pylint: disable=locally-disabled, too-many-arg
     moving_time: int | None = None,
     distance: int | None = None,
 ) -> str:
-    """Post event for an athlete to Intervals.icu.
-    If event_id is provided, the event will be updated instead of created.
+    """Create or update a planned workout on the Intervals.icu calendar.
+
+    If event_id is given the event is updated in place, otherwise created.
 
     Args:
         workout_type: Workout type (Ride, Run, Swim, Walk, Row, VirtualRide, VirtualRun)
         name: Name of the workout
-        description: Workout steps in Intervals.icu native text format (see format guide and examples below)
+        description: Workout steps in Intervals.icu native text format (see STEP FORMAT below)
         athlete_id: The Intervals.icu athlete ID (optional, will use ATHLETE_ID from .env if not provided)
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
         event_id: The Intervals.icu event ID (optional, for updates)
         start_date: Start date in YYYY-MM-DD format (optional, defaults to today)
-        moving_time: Total expected moving time of the workout in seconds (optional)
+        moving_time: Total expected moving time of the workout in seconds (optional; the saved duration comes from the parsed steps)
         distance: Total expected distance of the workout in meters (optional)
 
-    Description Format Guide:
-        Each step is a line starting with a dash (-) followed by duration/distance, intensity, and label.
-        Non-step lines (without a dash) are treated as comments/section headers.
+    ALWAYS VERIFY THE RESULT. The parser never errors on a malformed step —
+    it silently drops the line. After every call, compare the returned
+    `workout_doc.steps` against what you sent: a step you wrote that is
+    missing from `steps` did not parse, and an expected flag (e.g.
+    `until_lap_press`) that is absent means the step parsed as something
+    else. `workout_doc.duration` is the sum of the parsed steps and
+    overrides whatever you passed as `moving_time`; if they disagree, the
+    parsed steps are the truth.
 
-        Duration: s=seconds, m=minutes, h=hours (combinable: 1h30m10s)
-            30s, 5m, 1h, 1h30m, 4m50s
-        Distance: mtr=meters, km=kilometers
-            100mtr, 200mtr, 1km, 1.2km, 0.4km
-        Power intensity (cycling): percentage of FTP, absolute watts, or zone
-            80%, 110%, 50-75%, 200w, 100-140w, Z2, Z4
-        Pace intensity (running/swimming): percentage of threshold pace or zone
-            80% Pace, 92% Pace, Z2 Pace
-        Heart rate: percentage of max HR or LTHR
-            75% HR, 85% LTHR, Z2 HR
-        Ramps: gradual intensity change
-            ramp 50-75%, ramp 80-90% Pace
-        Repeats: Nx on its own line, followed by the steps to repeat.
-            IMPORTANT: blank line before and after the repeated section.
-        Rest: use 0% Pace for swimming wall rest, or duration-only lines
-            10s 0% Pace Rest, 30s Rest, 15s intensity=rest Rest
+    STEP FORMAT
+        - <duration|distance> <intensity> [modifiers]
+      Lines without a leading dash are section headers. Headers are the only
+      place free text reliably survives, so put anything the athlete must
+      read on screen there.
 
-    Example - Cycling Intervals:
-        - 5m ramp 50-75%
-        - 5m 75%
+    CUE TEXT — use `<!>`
+        - <cue> <!> <duration|distance> <intensity> [intensity=<type>]
+      The cue MUST come before `<!>`. Text placed AFTER the intensity is
+      discarded silently: `- 25s intensity=rest Wall` keeps the step but
+      loses the word "Wall".
 
-        5x
-        - 5m 85%
-        - 5m 65%
+    LAP-BUTTON STEPS (wait for the athlete to press lap)
+        - Press lap <duration> intensity=rest
+      `Press lap` must be the FIRST thing after the dash, with NOTHING
+      between it and the duration. Parses to
+      `{"text": "Press lap", "duration": N, "until_lap_press": true}`.
+      The duration is only a time estimate for the plan; the step ends on
+      the button press.
+        WRONG: `- until Press lap`                      -> line vanishes
+        WRONG: `- Press lap — set watch <!> 2m ...`      -> plain rest, no flag
+      Put the instruction in the preceding section header instead.
 
-        - 5m 75%
-        - 5m ramp 75-50%
+    DURATIONS — `m` MEANS MINUTES
+        30s  5m  1h  1h30m  4m50s  10m30s
+      `2h35` parses as 2h + 35 SECONDS, not 2h35m. Write `155m`.
+      For distance use `mtr` or `km`: `100mtr`, `1.2km`.
 
-    Example - Cycling Threshold:
-        - 20m ramp 50-75%
+    INTENSITY
+        Power:  80%  200w  100-140w  Z4  ramp 50-75%
+        Pace:   86% Pace  Z2 Pace        (running and swimming)
+        HR:     75% HR  85% LTHR  Z2 HR
+      Type:     intensity=warmup|active|rest|cooldown
+      A bare `1% Pace` on a rest step still gets a tiny distance assigned
+      and throws the workout total off by a metre. Omit the pace target on
+      rest steps: `- 2m intensity=rest`.
+      Watch ramp seams: a ramp ending at 50% followed by a step at 48%
+      leaves a visible discontinuity in the chart.
 
-        5x
-        - 8m 100%
-        - 4m 40%
+    REPEATS
+        Nx on its own line, then the steps. Blank line BEFORE and AFTER the
+        block. No nesting.
+      Where the rest sits inside the group is a real choice: rest-last ends
+      the block on a rest, rest-first gives the first rep a cushion and
+      avoids a dangling rest before a steady block. Follow the athlete's
+      stated preference, which may differ per sport.
 
-        - 16m 65%
+    SWIM WORKOUTS
+      If the athlete uses a Finis Tempo Trainer, each step's cue carries the
+      Tempo Trainer time per 25 m, worked out per zone as
+      `<%> -> <pace per 100m> -> FTT <sec:hundredths> per 25m`.
+      Take these from calculate_swim_pace, never by hand — it reads the
+      athlete's live CSS, which may differ from the value a previous session
+      used. Any mid-session Tempo Trainer change needs a `Press lap` stop,
+      not a timed wall rest.
 
-    Example - Cycling Endurance:
-        - 10m ramp 50-72%
-        - 90m 72%
-        - 10m ramp 72-50%
+    DESCRIPTION TEXT
+      Markdown. End every line inside a paragraph with TWO trailing spaces
+      or the line breaks collapse. Keep the athlete's language and accents.
+      Do not write resolved watt or pace values into the text when the steps
+      are expressed in percentages — Intervals renders them beside each step
+      and a hand-typed table goes stale the moment FTP or CSS changes.
 
-    Example - Running Endurance:
-        - 5m 76% Pace Warmup
-        - 50m 87% Pace Steady
-        - 5m 76% Pace Cooldown
+    EXAMPLE (Ride)
+        Warm-up
+        - 10m ramp 50-75% intensity=warmup
 
-    Example - Running VO2max Intervals:
-        - 2km 75% Pace Warm-up
-
-        5x
-        - 1km 106% Pace VO2max effort
-        - 500mtr 60% Pace Recovery jog
-
-        - 2km 75% Pace Cool down
-
-    Example - Running with Strides:
-        - 10m 75% Pace Easy warm-up
-        - 35m 82% Pace Steady Z2
-
-        6x
-        - 20s 105% Pace Stride
-        - 40s 72% Pace Recovery
-
-        - 5m 75% Pace Cool-down
-
-    Example - Swimming Endurance:
-        - 0.2km 75% Pace Warmup Freestyle
-        - 1.5km 82% Pace Main Set Freestyle
-        - 0.2km 75% Pace Cooldown Freestyle
-
-    Example - Swimming Intervals with Rest:
-        8x
-        - 50mtr 77% Pace
-        - 10s 0% Pace Rest
-
-        - 1300mtr 87% Pace
+        Main set — 4 × 5 min at threshold
 
         4x
-        - 50mtr 77% Pace
-        - 10s 0% Pace Rest
+        - Hold 90 rpm <!> 5m 100%
+        - 3m 50% intensity=rest
 
-    Example - Swimming Technique Session:
-        ## Warmup
-        - 400mtr 74% Pace Easy
+        Press lap when ready to cool down
+        - Press lap 2m intensity=rest
+        - 10m 60% intensity=cooldown
 
-        8x
-        - 50mtr 82% Pace Choice drill
-        - 15s intensity=rest Rest
-
-        ## Technique Focus
-        5x
-        - 100mtr 87% Pace Smooth swim
-        - 20s intensity=rest Rest
-
-        ## Cool Down
-        - 200mtr 74% Pace Easy choice
-
-    Example - Swimming Ladder:
-        - 200mtr 70% Pace Warmup
-
-        1x
-        - 400mtr 82% Pace
-        - 30s Rest
-        - 800mtr 82% Pace
-        - 45s Rest
-        - 1.2km 82% Pace
-        - 1m Rest
-        - 800mtr 82% Pace
-        - 45s Rest
-        - 400mtr 82% Pace
-
-        - 200mtr 65% Pace Cooldown
+    Returns:
+        A string. On success, "Successfully created event:" (or "updated")
+        followed by the saved event as JSON, including `workout_doc` (the
+        parsed structure), `icu_training_load`, and projected
+        `icu_ctl`/`icu_atl`. Those CTL/ATL figures include
+        planned-but-unexecuted work: they are projections, not the athlete's
+        current form. On failure, a string starting with "Error" — check for
+        it before verifying the steps.
     """
     message = None
     if not athlete_id:
