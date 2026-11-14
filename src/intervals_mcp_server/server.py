@@ -591,6 +591,16 @@ async def get_activities(  # pylint: disable=too-many-arguments,too-many-return-
         limit: Maximum number of activities to return (optional, defaults to 10)
         include_unnamed: Whether to include unnamed activities (optional, defaults to False)
 
+    `interval_summary` is Intervals' auto-grouping, NOT the workout's real
+    splits: `11x 490m 2:22` can be ten 500s re-chunked, and the uniform pace
+    it shows is an artefact of the grouping. Never read pacing evenness or
+    compliance off it — call get_activity_intervals for the actual splits.
+
+    An activity's top-level `moving_time` excludes pauses the device detected
+    inside each interval, while the per-interval times from
+    get_activity_intervals are wall-to-wall. The two yield different paces
+    for the same session; state which one you used.
+
     Returns:
         List of activity dictionaries or error message
     """
@@ -687,6 +697,24 @@ async def get_activity_intervals(activity_id: str, api_key: str | None = None) -
     Args:
         activity_id: The Intervals.icu activity ID
         api_key: The Intervals.icu API key (optional, will use API_KEY from .env if not provided)
+
+    `icu_groups` is Intervals' auto-grouping (the same one get_activities
+    shows as `interval_summary`), NOT the workout's real splits:
+    `11x 490m 2:22` can be ten 500s re-chunked, and the uniform pace it
+    shows is an artefact of the grouping. Never read pacing evenness or
+    compliance off it — use `icu_intervals` for the actual splits.
+
+    An activity's top-level `moving_time` (from get_activities) excludes
+    pauses the device detected inside each interval, while the per-interval
+    times here are wall-to-wall. The two yield different paces for the same
+    session; state which one you used.
+
+    In pool swims a rest ends when its timer does: time spent at the wall
+    after that (breathing, drinking, adjusting a Tempo Trainer) is counted
+    in the next interval, so interval paces come out slower than the
+    swimming itself. That is why a rest that ends on the lap button
+    (`Press lap`, see add_or_update_event) is often the better choice: the
+    next interval then starts when the athlete actually pushes off.
 
     Returns:
         Dictionary containing interval data or error message
