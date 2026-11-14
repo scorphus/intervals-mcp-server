@@ -1156,6 +1156,24 @@ async def add_or_update_event(  # pylint: disable=locally-disabled, too-many-arg
         - Press lap 2m intensity=rest
         - 10m 60% intensity=cooldown
 
+    EXAMPLE (Swim, Tempo Trainer)
+        Warm-up
+        - 35:12 easy <!> 400mtr 84% Pace intensity=warmup
+
+        Set the Tempo Trainer to 34:30, press lap to start
+        - Press lap 1m intensity=rest
+
+        Main set
+        10x
+        - 34:30 even pace <!> 500mtr 86% Pace intensity=active
+        - Wall <!> 15s intensity=rest
+
+        Set the Tempo Trainer to 35:12, press lap to start
+        - Press lap 1m intensity=rest
+
+        Cool-down
+        - 35:12 easy choice <!> 200mtr 84% Pace intensity=cooldown
+
     Returns:
         A string. On success, "Successfully created event:" (or "updated")
         followed by the saved event as JSON, including `workout_doc` (the
