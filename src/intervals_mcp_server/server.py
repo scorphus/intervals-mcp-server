@@ -1164,6 +1164,7 @@ async def add_or_update_event(  # pylint: disable=locally-disabled, too-many-arg
         - Press lap 1m intensity=rest
 
         Main set
+
         10x
         - 34:30 even pace <!> 500mtr 86% Pace intensity=active
         - Wall <!> 15s intensity=rest
