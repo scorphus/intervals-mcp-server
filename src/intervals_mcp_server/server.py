@@ -59,6 +59,7 @@ import json
 import httpx  # pylint: disable=import-error
 from mcp.server.mcpserver import MCPServer  # pylint: disable=import-error
 
+from intervals_mcp_server import usage
 from intervals_mcp_server.utils.filtering import (
     transform_activities,
     transform_activity_details,
@@ -180,8 +181,16 @@ def _build_auth() -> tuple[Any, dict[str, Any]]:
 
 auth_provider, _auth_kwargs = _build_auth()
 
+class UsageLoggingMCPServer(MCPServer):
+    """MCPServer that records each tool call in the usage log (see usage.py)."""
+
+    async def call_tool(self, name, arguments, context=None):
+        await usage.record(_get_httpx_client(), _get_intervals_athlete_id(), name)
+        return await super().call_tool(name, arguments, context)
+
+
 # Initialize the MCP server with custom lifespan (and OAuth when over HTTP)
-mcp = MCPServer("intervals-icu", lifespan=lifespan, **_auth_kwargs)
+mcp = UsageLoggingMCPServer("intervals-icu", lifespan=lifespan, **_auth_kwargs)
 
 
 async def _send_response(send, status: int, body: bytes = b"", headers=()) -> None:

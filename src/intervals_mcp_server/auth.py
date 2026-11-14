@@ -73,12 +73,14 @@ ACCESS_NEW_ACCOUNT_HTML = (
 )
 ACCESS_REQUEST_HTML = f"{ACCESS_DM_HTML} {ACCESS_NEW_ACCOUNT_HTML}"
 
-# What's kept, shown on both the landing and sign-in pages. The retention is
-# Vercel's runtime log retention on the Hobby plan.
+# What's kept, shown on both the landing and sign-in pages. The hour is
+# Vercel's runtime log retention on the Hobby plan; the 5 weeks is
+# usage.RETENTION.
 PRIVACY_NOTE_HTML = (
     "Your key is never stored &mdash; it travels encrypted inside your token. "
     "Logs record your athlete ID, IP and tools used, never your data. "
-    "Vercel keeps those logs for an hour."
+    "Vercel keeps those logs for an hour. "
+    "To keep things fair, each tool call (athlete ID, time, tool) is kept for 5 weeks."
 )
 
 
