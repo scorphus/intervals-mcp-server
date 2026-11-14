@@ -73,6 +73,14 @@ ACCESS_NEW_ACCOUNT_HTML = (
 )
 ACCESS_REQUEST_HTML = f"{ACCESS_DM_HTML} {ACCESS_NEW_ACCOUNT_HTML}"
 
+# What's kept, shown on both the landing and sign-in pages. The retention is
+# Vercel's runtime log retention on the Hobby plan.
+PRIVACY_NOTE_HTML = (
+    "Your key is never stored &mdash; it travels encrypted inside your token. "
+    "Logs record your athlete ID, IP and tools used, never your data. "
+    "Vercel keeps those logs for an hour."
+)
+
 
 def _encrypt(plaintext: str) -> str:
     return _fernet.encrypt(plaintext.encode()).decode()
@@ -306,6 +314,7 @@ class IntervalsOAuthProvider:
             .replace("{{build_sha}}", f" ({sha})" if (sha := _get_build_sha()) else "")
             .replace("{{access_dm}}", ACCESS_DM_HTML)
             .replace("{{access_new_account}}", ACCESS_NEW_ACCOUNT_HTML)
+            .replace("{{privacy_note}}", PRIVACY_NOTE_HTML)
         )
         return HTMLResponse(html)
 
@@ -321,7 +330,9 @@ class IntervalsOAuthProvider:
         error_html = f'<p style="color:#e74c3c;margin-bottom:1rem">{error}</p>' if error else ""
 
         return HTMLResponse(
-            AUTH_PAGE_HTML.replace("{{request_id}}", request_id).replace("{{error}}", error_html)
+            AUTH_PAGE_HTML.replace("{{request_id}}", request_id)
+            .replace("{{error}}", error_html)
+            .replace("{{privacy_note}}", PRIVACY_NOTE_HTML)
         )
 
     async def handle_auth_submit(self, request: Request):
@@ -437,6 +448,9 @@ AUTH_PAGE_HTML = """\
     <a href="https://intervals.icu/settings" target="_blank">intervals.icu/settings</a>
     &mdash; Athlete ID is at the top, API key under "Developer Settings".
   </p>
+  <p class="help">
+    {{privacy_note}}
+  </p>
 </div>
 </body>
 </html>
@@ -540,6 +554,9 @@ LANDING_PAGE_HTML = """\
     Find your credentials at
     <a href="https://intervals.icu/settings" target="_blank">intervals.icu/settings</a>
     &mdash; Athlete ID is at the top, API key under Developer Settings.
+  </p>
+  <p class="links">
+    {{privacy_note}}
   </p>
 
   <hr class="separator">
