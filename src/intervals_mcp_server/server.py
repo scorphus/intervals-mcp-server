@@ -264,6 +264,76 @@ class RefuseStreamsMiddleware:
         await self.app(scope, replay, send)
 
 
+class RequestLoggingMiddleware:
+    """Log every HTTP request when it starts and when it ends.
+
+    Logs method, path, status, client, user agent, the referer for non-MCP
+    pages, and for /mcp the JSON-RPC method and tool name from the body —
+    never tool arguments, credentials, or token contents. Logging at the
+    start too means a request killed by the platform timeout still leaves a
+    trace.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    @staticmethod
+    def _mcp_detail(payload: Any) -> str:
+        if payload is None:
+            return ""
+        msgs = payload if isinstance(payload, list) else [payload]
+        parts = []
+        for m in msgs:
+            if not isinstance(m, dict):
+                continue
+            detail = str(m.get("method", ""))
+            if detail == "tools/call":
+                detail += f":{m.get('params', {}).get('name', '?')}"
+            if detail:
+                parts.append(detail)
+        return ",".join(parts)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        method = scope.get("method", "?")
+        path = scope.get("path", "?")
+        client = (scope.get("client") or ("?",))[0]
+        headers = dict(scope.get("headers", []))
+        ua = headers.get(b"user-agent", b"").decode(errors="replace")[:80]
+        referer = headers.get(b"referer", b"").decode(errors="replace")[:200]
+
+        body, replay = await _read_body(receive)
+        payload = _parse_json(body) if path == "/mcp" and body else None
+        detail = self._mcp_detail(payload)
+        label = f"{method} {path}{f' [{detail}]' if detail else ''}"
+        status: dict[str, Any] = {}
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                status["code"] = message["status"]
+            await send(message)
+
+        logger.info(
+            "req start %s client=%s ua=%s%s",
+            label,
+            client,
+            ua,
+            f" referer={referer or '-'}" if path != "/mcp" else "",
+        )
+        try:
+            await self.app(scope, replay, send_wrapper)
+        finally:
+            logger.info(
+                "req done %s -> %s client=%s ua=%s",
+                label,
+                status.get("code", "?"),
+                client,
+                ua,
+            )
+
+
 _STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 _STATIC_FILES = {
     "/favicon.ico": ("favicon.ico", "image/x-icon"),
@@ -312,7 +382,7 @@ def build_http_app():
             transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
         )
     )
-    return app
+    return RequestLoggingMiddleware(app)
 
 # Constants
 INTERVALS_API_BASE_URL = os.getenv("INTERVALS_API_BASE_URL", "https://intervals.icu/api/v1")
