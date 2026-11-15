@@ -1,6 +1,7 @@
 # Contributor Guide
 
-MCP server for Intervals.icu. Python 3.12+, MCP SDK 2.x, httpx. Code in
+MCP server for Intervals.icu. Python 3.12+ (runs on 3.14 in production and
+CI, pinned by `.python-version`), MCP SDK 2.x, httpx. Code in
 `src/intervals_mcp_server`, tests in `tests`.
 
 ## Setup
@@ -20,10 +21,11 @@ uv sync --all-extras
 ```
 pytest tests --ignore=tests/real
 ruff check src api
+pylint --disable=C,R src api scripts
 ```
 
-`tests/real` hits the live Intervals.icu API and needs real credentials —
-don't run it in CI.
+CI runs the same pytest and pylint commands. `tests/real` hits the live
+Intervals.icu API and needs real credentials — don't run it in CI.
 
 ## Deploying
 
