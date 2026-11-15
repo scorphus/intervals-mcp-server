@@ -116,7 +116,7 @@ def _get_build_sha() -> str:
             ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL, text=True
         ).strip()
         return full[:8]
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         return ""
 
 
@@ -308,7 +308,7 @@ class IntervalsOAuthProvider:
         base_url = str(request.base_url).rstrip("/")
         try:
             ver = pkg_version("intervals-mcp-server")
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             ver = "dev"
         html = (
             LANDING_PAGE_HTML.replace("{{base_url}}", base_url)

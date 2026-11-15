@@ -17,7 +17,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
+        pip install pylint -e .
     - name: Analyzing the code with pylint
       run: |
-        pylint $(git ls-files '*.py')
+        # Warnings and errors only, on shipped code; style is ruff's job.
+        pylint --disable=C,R src api scripts

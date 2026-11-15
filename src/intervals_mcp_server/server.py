@@ -89,7 +89,7 @@ httpx_client: httpx.AsyncClient | None = None
 
 
 def _get_httpx_client() -> httpx.AsyncClient:
-    global httpx_client  # noqa: PLW0603
+    global httpx_client  # noqa: PLW0603  # pylint: disable=global-statement
     if httpx_client is None or httpx_client.is_closed:
         httpx_client = httpx.AsyncClient()
     return httpx_client
@@ -363,8 +363,8 @@ def build_http_app():
 
     for route, (filename, media_type) in _STATIC_FILES.items():
 
-        @mcp.custom_route(route, methods=["GET"])
-        async def static_file(request, filename=filename, media_type=media_type):
+        @mcp.custom_route(route, methods=["GET"])  # pylint: disable=cell-var-from-loop
+        async def static_file(_request, filename=filename, media_type=media_type):
             return FileResponse(
                 os.path.join(_STATIC_DIR, filename),
                 media_type=media_type,
