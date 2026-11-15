@@ -174,6 +174,10 @@ def _build_auth() -> tuple[Any, dict[str, Any]]:
         "auth": AuthSettings(
             issuer_url=issuer_url,
             resource_server_url=os.getenv("MCP_RESOURCE_URL", issuer_url),
+            # Our tokens are JWTs we sign ourselves (JWT_SECRET) and carry no
+            # RFC 8707 resource claim, so no other server can mint one we'd
+            # accept. True would reject every token we issue.
+            validate_token_resource=False,
             client_registration_options=ClientRegistrationOptions(enabled=True),
         ),
     }
