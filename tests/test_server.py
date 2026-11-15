@@ -634,7 +634,7 @@ def test_get_activity_pace_curve_with_error(monkeypatch):
     monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request_error)
     result = asyncio.run(get_activity_pace_curve("i123"))
     assert isinstance(result, str)
-    assert "Error fetching activity power curve" in result
+    assert "Error fetching activity pace curve" in result
 
 
 def test_get_activity_pace_curve_missing_id():
@@ -908,3 +908,28 @@ def test_middleware_passes_normal_requests_through():
     assert app_called
     assert status == 200
     assert out == b"inner"
+
+
+def test_get_activity_pace_curve_passes_output_validation(monkeypatch):
+    """
+    The pace-curve endpoint returns arrays, so the tool's declared output type
+    must accept them; a too-narrow type made MCP reject every response.
+    """
+    from intervals_mcp_server.server import mcp
+
+    curve = {
+        "id": "i1",
+        "distance": [25.0, 50.0, 100.0],
+        "values": [18.2, 37.9, 80.4],
+        "start_index": [10, 12, 15],
+        "end_index": [28, 50, 95],
+        "gap": False,
+    }
+
+    async def fake_request(*_args, **_kwargs):
+        return curve
+
+    monkeypatch.setattr("intervals_mcp_server.server.make_intervals_request", fake_request)
+    result = asyncio.run(mcp.call_tool("get_activity_pace_curve", {"activity_id": "i1"}))
+    assert not result.is_error
+    assert result.structured_content["result"]["distance"] == [25.0, 50.0, 100.0]

@@ -1616,7 +1616,7 @@ async def get_activity_pace_curve(
     activity_id: str,
     api_key: str | None = None,
     gap: bool = False,
-) -> dict[str, float] | str:
+) -> dict[str, Any] | str:
     """Get activity pace curve in JSON format
 
     Args:
@@ -1643,7 +1643,7 @@ async def get_activity_pace_curve(
 
     if isinstance(result, dict) and "error" in result:
         error_message = result.get("message", "Unknown error")
-        return f"Error fetching activity power curve: {error_message}"
+        return f"Error fetching activity pace curve: {error_message}"
 
     return result if isinstance(result, dict) else {}
 
